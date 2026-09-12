@@ -1,6 +1,7 @@
 import { assert, assertEquals, assertStringIncludes, assertThrows } from "@std/assert";
-import { configCandidates, configPath, loadConfig } from "./load.ts";
+import { configCandidates, configPath, loadConfig, systemConfigPath } from "./load.ts";
 import { join } from "@std/path";
+import { IS_WINDOWS } from "../platform.ts";
 import { ConfigError } from "./schema.ts";
 
 const VALID = JSON.stringify({
@@ -27,9 +28,9 @@ Deno.test("a blank variable is not a path, so the search runs", () => {
  * host that also serves one does not pick up the service's token.
  */
 Deno.test("it looks in the account's config directory, then the system's", () => {
-  // join() spells the edges with the host's separator, so the expectations
-  // are built the same way rather than written out in one spelling.
-  assertEquals(configCandidates({ HOME: "/home/amelia" }), [
+  // The host is named, because on a Windows host this same search would
+  // produce the Windows spellings, which have their own tests above.
+  assertEquals(configCandidates({ HOME: "/home/amelia" }, false), [
     join("/home/amelia", ".config", "errand", "config.json"),
     join("/etc", "errand", "config.json"),
     "config.json",
@@ -47,12 +48,12 @@ Deno.test("the first one that is actually there is the one used", () => {
   const env = { HOME: "/home/amelia" };
 
   assertEquals(
-    configPath(env, (path) => path === "/etc/errand/config.json"),
+    configPath(env, (path) => path === "/etc/errand/config.json", false),
     "/etc/errand/config.json",
   );
-  assertEquals(configPath(env, (path) => path === "config.json"), "config.json");
+  assertEquals(configPath(env, (path) => path === "config.json", false), "config.json");
   // With none of them there, the failure names the place most likely meant.
-  assertEquals(configPath(env, () => false), "/home/amelia/.config/errand/config.json");
+  assertEquals(configPath(env, () => false, false), "/home/amelia/.config/errand/config.json");
 });
 
 Deno.test("a valid file loads", () => {
@@ -76,7 +77,9 @@ Deno.test("a missing file says where it looked and what to do", () => {
 
   const said = error.problems.join("\n");
   assertStringIncludes(said, "/home/amelia/.config/errand/config.json");
-  assertStringIncludes(said, "/etc/errand/config.json");
+  // Every place the search looks is named, spelled the way this host spells
+  // it, which on Windows is not /etc.
+  assertStringIncludes(said, systemConfigPath(undefined, IS_WINDOWS));
   assertStringIncludes(said, "ERRAND_CONFIG");
 });
 

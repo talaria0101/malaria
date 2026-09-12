@@ -90,8 +90,9 @@ export function configCandidates(
 export function configPath(
   env: Record<string, string | undefined>,
   exists: (path: string) => boolean = fileExists,
+  hostWindows: boolean = IS_WINDOWS,
 ): string {
-  const candidates = configCandidates(env);
+  const candidates = configCandidates(env, hostWindows);
   return candidates.find(exists) ?? (candidates[0] as string);
 }
 
