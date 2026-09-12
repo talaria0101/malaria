@@ -182,7 +182,7 @@ export class WebServer {
     if (send !== null && request.method === "POST") return this.send(send[1] as string, request);
 
     const stream = /^\/api\/sessions\/([^/]+)\/stream$/.exec(path);
-    if (stream !== null) return this.streamSession(stream[1] as string);
+    if (stream !== null) return this.streamSession(stream[1] as string, request);
 
     const transcript = /^\/api\/sessions\/([^/]+)\/transcript$/.exec(path);
     if (transcript !== null) return this.transcript(transcript[1] as string);
@@ -415,7 +415,7 @@ export class WebServer {
     return found;
   }
 
-  private async streamSession(id: string): Promise<Response> {
+  private async streamSession(id: string, request: Request): Promise<Response> {
     const view = new WebView(this.names);
     const detach = await this.sessions.attachView(id, view);
 
@@ -426,11 +426,26 @@ export class WebServer {
 
     // The browser closing cancels the stream, which is the only signal that a
     // view has gone. Detaching then keeps the fan out from growing forever.
+    // The wait also ends when the request dies, so the poll does not outlive
+    // the connection it is watching.
     void (async () => {
-      while (!view.isClosed) {
-        await new Promise((resolve) => setTimeout(resolve, 1_000));
+      try {
+        while (!view.isClosed) {
+          await new Promise<void>((resolve) => {
+            const timer = setTimeout(resolve, 1_000);
+            request.signal.addEventListener(
+              "abort",
+              () => {
+                clearTimeout(timer);
+                resolve();
+              },
+              { once: true },
+            );
+          });
+        }
+      } finally {
+        detach();
       }
-      detach();
     })();
 
     return new Response(view.body, {

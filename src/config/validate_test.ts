@@ -1,4 +1,5 @@
 import { assertEquals, assertStringIncludes, assertThrows } from "@std/assert";
+import { resolve } from "@std/path";
 import { ConfigError, DEFAULTS } from "./schema.ts";
 import { validateConfig } from "./validate.ts";
 
@@ -231,9 +232,11 @@ Deno.test("extra grants are taken as absolute paths", () => {
     },
   })).sandbox.policyExtra;
 
-  assertEquals(extra?.read, ["/opt/toolchains"]);
-  assertEquals(extra?.write, ["/srv/output"]);
-  assertEquals(extra?.execute, ["/opt/toolchains/bin"]);
+  // validate resolves each path, and resolve() spells the result the host's
+  // way, on Windows with a drive letter in front.
+  assertEquals(extra?.read, [resolve("/opt/toolchains")]);
+  assertEquals(extra?.write, [resolve("/srv/output")]);
+  assertEquals(extra?.execute, [resolve("/opt/toolchains/bin")]);
 });
 
 /** There is no working directory to resolve one against after the pivot. */
@@ -312,7 +315,7 @@ Deno.test("an empty environment is refused rather than silently doing nothing", 
 Deno.test("directories added to the path are taken as absolute paths", () => {
   assertEquals(
     validateConfig(valid({ sandbox: { pathExtra: ["/opt/toolchains/bin"] } })).sandbox.pathExtra,
-    ["/opt/toolchains/bin"],
+    [resolve("/opt/toolchains/bin")],
   );
 });
 

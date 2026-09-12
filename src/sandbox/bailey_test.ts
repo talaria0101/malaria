@@ -2,6 +2,7 @@ import { assertEquals, assertRejects, assertStringIncludes } from "@std/assert";
 import { DEFAULTS, type SandboxConfig } from "../config/schema.ts";
 import { createLogger } from "../log.ts";
 import { type SandboxLaunch, SandboxUnavailableError } from "./backend.ts";
+import { type AgentRuntime } from "./runtime.ts";
 import { baileyArgs, BaileySandbox, parseDoctor, type Run, sessionEnvironment } from "./bailey.ts";
 
 const CONFIG: SandboxConfig = {
@@ -33,6 +34,11 @@ const HEALTHY = [
   "seccomp: yes",
 ].join("\n");
 
+const FAKE_RUNTIME: AgentRuntime = {
+  readPaths: ["/opt/pi/lib"],
+  pathEntries: ["/opt/pi/bin"],
+};
+
 /** Answers the tool's commands from a script, and records what was asked. */
 function fakeRun(
   answers: Record<string, { code?: number; stdout?: string; stderr?: string }> = {},
@@ -53,7 +59,13 @@ function fakeRun(
 
 Deno.test("a host missing landlock cannot run this backend at all", async () => {
   const { run } = fakeRun({ doctor: { stdout: "landlock: no\nuser namespaces: yes" } });
-  const sandbox = new BaileySandbox(CONFIG, createLogger({}, () => {}), "/state", run);
+  const sandbox = new BaileySandbox(
+    CONFIG,
+    createLogger({}, () => {}),
+    "/state",
+    run,
+    FAKE_RUNTIME,
+  );
 
   const error = await assertRejects(() => sandbox.probe(), SandboxUnavailableError);
   assertStringIncludes(String(error), "does not provide Landlock");
@@ -81,7 +93,13 @@ Deno.test("no cgroup delegation is a gap that is reported, not a refusal", () =>
 
 Deno.test("a tool that is not installed is reported as unavailable", async () => {
   const run: Run = () => Promise.reject(new Error("no such command"));
-  const sandbox = new BaileySandbox(CONFIG, createLogger({}, () => {}), "/state", run);
+  const sandbox = new BaileySandbox(
+    CONFIG,
+    createLogger({}, () => {}),
+    "/state",
+    run,
+    FAKE_RUNTIME,
+  );
 
   const error = await assertRejects(() => sandbox.probe(), SandboxUnavailableError);
   assertStringIncludes(String(error), "not installed");
@@ -203,6 +221,7 @@ Deno.test("extra grants are named in what the backend reports", async () => {
     createLogger({}, () => {}),
     root,
     run,
+    FAKE_RUNTIME,
   );
 
   const report = await sandbox.probe();
@@ -223,6 +242,7 @@ Deno.test("variables set by configuration are named in what the backend reports"
     createLogger({}, () => {}),
     root,
     run,
+    FAKE_RUNTIME,
   );
 
   const said = (await sandbox.probe()).notes.join("\n");
@@ -250,7 +270,13 @@ Deno.test("a kernel that cannot enforce network rules refuses a networked sessio
   const { run } = fakeRun({
     doctor: { stdout: "landlock: yes (abi 2)\nuser namespaces: yes\ncgroup delegation: yes" },
   });
-  const sandbox = new BaileySandbox(CONFIG, createLogger({}, () => {}), "/state", run);
+  const sandbox = new BaileySandbox(
+    CONFIG,
+    createLogger({}, () => {}),
+    "/state",
+    run,
+    FAKE_RUNTIME,
+  );
 
   const error = await assertRejects(() => sandbox.probe(), SandboxUnavailableError);
   assertStringIncludes(String(error), "ABI 4");
@@ -265,6 +291,7 @@ Deno.test("a kernel that cannot enforce network rules may still run offline sess
     createLogger({}, () => {}),
     "/state",
     run,
+    FAKE_RUNTIME,
   );
 
   const report = await sandbox.probe();

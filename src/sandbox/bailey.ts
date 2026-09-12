@@ -32,7 +32,7 @@ import {
   RESOLV_CONF,
   RESOLV_FILENAME,
 } from "./policy.ts";
-import { agentRuntime } from "./runtime.ts";
+import { type AgentRuntime, agentRuntime } from "./runtime.ts";
 import { spawnAgent } from "./spawn.ts";
 
 /** What the tool prints when it read a policy and then ignored it. */
@@ -180,6 +180,7 @@ export class BaileySandbox implements Sandbox {
     private readonly log: Logger,
     private readonly stateRoot: string,
     private readonly run: Run = runBailey,
+    private readonly runtime: AgentRuntime | undefined = agentRuntime(),
   ) {}
 
   async probe(): Promise<CapabilityReport> {
@@ -210,7 +211,7 @@ export class BaileySandbox implements Sandbox {
 
     // This backend runs the host's own agent rather than one baked into an
     // image, so an agent that is not installed is a reason to refuse to start.
-    if (agentRuntime() === undefined) {
+    if (this.runtime === undefined) {
       throw new SandboxUnavailableError("bailey", [
         "the pi agent is not on PATH, and this backend runs the host's own installation",
       ]);
@@ -262,7 +263,7 @@ export class BaileySandbox implements Sandbox {
   }
 
   async launch(launch: SandboxLaunch): Promise<SandboxHandle> {
-    const runtime = agentRuntime();
+    const runtime = this.runtime;
     if (runtime === undefined) {
       throw new SandboxLaunchError(
         "the pi agent is not on PATH, so there is nothing for a confined session to run",

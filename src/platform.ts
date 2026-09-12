@@ -21,24 +21,27 @@ export const TASKKILL = "taskkill";
 export const TASKLIST = "tasklist";
 
 /**
- * Runs a program to completion and returns whether it succeeded.
+ * Runs a program to completion and returns what it said.
  *
  * Synchronous, because both callers decide on a fact about a process that
  * may already be gone, and a promise would make the answer arrive after the
  * decision.
  */
-export function runSync(program: string, args: readonly string[]): boolean {
+export function runSync(
+  program: string,
+  args: readonly string[],
+): { code: number; stdout: string } {
   try {
     const command = new Deno.Command(program, {
       args: [...args],
-      stdout: "null",
+      stdout: "piped",
       stderr: "null",
       stdin: "null",
     });
-    const { code } = command.outputSync();
-    return code === 0;
+    const { code, stdout } = command.outputSync();
+    return { code, stdout: new TextDecoder().decode(stdout) };
   } catch {
-    return false;
+    return { code: -1, stdout: "" };
   }
 }
 
@@ -50,7 +53,11 @@ export function runSync(program: string, args: readonly string[]): boolean {
  * signal, and the runtime refuses anything but termination there, so the
  * same question goes to the system's own process listing instead.
  *
- * Being refused permission counts as running on both: the process is there,
+ * On Windows the answer is read from the listing rather than from the exit
+ * code: the listing tool reports no match with a success code and a line of
+ * prose, which is not a process.
+ *
+ * Being refused permission counts as running on Linux: the process is there,
  * it just belongs to somebody else.
  *
  * @param lister injected; the process-listing command used on Windows.
@@ -58,7 +65,7 @@ export function runSync(program: string, args: readonly string[]): boolean {
  */
 export function processExists(
   pid: number,
-  lister: (program: string, args: readonly string[]) => boolean = runSync,
+  lister: (program: string, args: readonly string[]) => { code: number; stdout: string } = runSync,
   hostWindows: boolean = IS_WINDOWS,
 ): boolean {
   if (!Number.isInteger(pid) || pid <= 0) return false;
@@ -70,10 +77,13 @@ export function processExists(
       return error instanceof Deno.errors.PermissionDenied;
     }
   }
-  // tasklist exits non-zero when no process matches the filter, and prints
-  // the answer either way. The header line is language-dependent; the PID is
-  // matched as a field, so the locale of the message does not matter.
-  return lister(TASKLIST, ["/FI", `PID eq ${pid}`, "/NH", "/FO", "CSV"]);
+  // The listing is CSV: "name","pid","session","session-number","memory".
+  // The pid is the second field of some line.
+  const { stdout } = lister(TASKLIST, ["/FI", `PID eq ${pid}`, "/NH", "/FO", "CSV"]);
+  return stdout.split("\n").some((line) => {
+    const fields = line.split(",");
+    return (fields[1] ?? "").replace(/"/g, "").trim() === String(pid);
+  });
 }
 
 /**
@@ -84,9 +94,9 @@ export function processExists(
  * graceful request would leave grandchildren behind holding the project
  * open, which is the failure this exists to prevent.
  *
- * @returns whether the tool reported success.
+ * @returns whether the tool exited cleanly.
  */
 export function treeKill(pid: number): boolean {
   if (!IS_WINDOWS) return false;
-  return runSync(TASKKILL, ["/PID", String(pid), "/T", "/F"]);
+  return runSync(TASKKILL, ["/PID", String(pid), "/T", "/F"]).code === 0;
 }

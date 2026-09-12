@@ -1218,7 +1218,9 @@ export class Session {
     const host = this.sandbox?.toHostPath(agentPath);
     if (host === undefined) return agentPath;
     const root = this.options.project.path;
-    return host.startsWith(root) ? host.slice(root.length).replace(/^\/+/, "") : host;
+    // Either separator, since the host's own spelling of a directory edge
+    // depends on which host this is.
+    return host.startsWith(root) ? host.slice(root.length).replace(/^[/\\]+/, "") : host;
   }
 
   /**
@@ -1280,7 +1282,7 @@ export class Session {
         return;
       }
       await this.options.thread.upload(
-        host.split("/").pop() ?? "file",
+        host.split(/[\\/]/).pop() ?? "file",
         Deno.readFileSync(host),
         `\`${this.displayPath(wanted)}\` ${stat.size} bytes`,
       );

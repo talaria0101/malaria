@@ -19,7 +19,7 @@ Deno.test("the environment names the file, and nothing else is consulted", () =>
 Deno.test("a blank variable is not a path, so the search runs", () => {
   const looked = configCandidates({ ERRAND_CONFIG: "  ", HOME: "/home/amelia" });
 
-  assertEquals(looked[0], "/home/amelia/.config/errand/config.json");
+  assertEquals(looked[0], join("/home/amelia", ".config", "errand", "config.json"));
 });
 
 /**
@@ -27,9 +27,11 @@ Deno.test("a blank variable is not a path, so the search runs", () => {
  * host that also serves one does not pick up the service's token.
  */
 Deno.test("it looks in the account's config directory, then the system's", () => {
+  // join() spells the edges with the host's separator, so the expectations
+  // are built the same way rather than written out in one spelling.
   assertEquals(configCandidates({ HOME: "/home/amelia" }), [
-    "/home/amelia/.config/errand/config.json",
-    "/etc/errand/config.json",
+    join("/home/amelia", ".config", "errand", "config.json"),
+    join("/etc", "errand", "config.json"),
     "config.json",
   ]);
 });
@@ -37,7 +39,7 @@ Deno.test("it looks in the account's config directory, then the system's", () =>
 Deno.test("a chosen config root is honoured", () => {
   assertEquals(
     configCandidates({ HOME: "/home/amelia", XDG_CONFIG_HOME: "/home/amelia/cfg" })[0],
-    "/home/amelia/cfg/errand/config.json",
+    join("/home/amelia/cfg", "errand", "config.json"),
   );
 });
 

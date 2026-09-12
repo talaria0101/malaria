@@ -244,6 +244,7 @@ Deno.test("a message reaches the session it names", () =>
 Deno.test("a message to a session that never existed says so", () =>
   withServer(async ({ post }) => {
     const answer = await post("/api/sessions/nobody/send", { text: "hello" });
+    await answer.body?.cancel();
 
     assertEquals(answer.status, 404);
   }));
@@ -255,6 +256,7 @@ Deno.test("an observing interface changes nothing and says why", () =>
 
     const started = await post("/api/sessions", { project: "demo", prompt: "go" });
     const sent = await post("/api/sessions/s1/send", { text: "hello" });
+    await started.body?.cancel();
 
     assertEquals(started.status, 403);
     assertEquals(sent.status, 403);
@@ -298,7 +300,9 @@ Deno.test("a stopped session's transcript is read from where it was written", ()
 
 Deno.test("a transcript for a session nobody has heard of is not found", () =>
   withServer(async ({ get }) => {
-    assertEquals((await get("/api/sessions/nobody/transcript")).status, 404);
+    const missing = await get("/api/sessions/nobody/transcript");
+    await missing.body?.cancel();
+    assertEquals(missing.status, 404);
   }));
 
 Deno.test("a session's project can be listed and read", () =>

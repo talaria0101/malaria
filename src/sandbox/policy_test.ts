@@ -1,5 +1,6 @@
 import { assertEquals, assertStringIncludes } from "@std/assert";
 import type { SandboxLaunch } from "./backend.ts";
+import { join } from "@std/path";
 import { policyContents, policyPath, RESOLV_CONF } from "./policy.ts";
 import type { AgentRuntime } from "./runtime.ts";
 
@@ -144,7 +145,8 @@ Deno.test("ports do not grant egress to a session that has no network", () => {
 Deno.test("the policy lives in the state directory, never in the project", () => {
   const written = policyPath(launch());
 
-  assertStringIncludes(written, "/home/operator/.local/state/errand/s-1/");
+  // join() spells the directory edge with the host's separator.
+  assertStringIncludes(written, join("/home/operator/.local/state/errand/s-1", "policy.toml"));
   assertEquals(written.startsWith("/home/operator/code/demo"), false);
 });
 

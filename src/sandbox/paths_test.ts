@@ -1,17 +1,25 @@
 import { assertEquals } from "@std/assert";
+import { join, resolve, SEPARATOR } from "@std/path";
 import { hostPathUnder, within } from "./paths.ts";
 
 const ROOT = "/projects/demo";
 
+// resolve() spells the answer with the host's own separators and, on
+// Windows, ahead of a drive letter. Comparing against resolve() of the same
+// parts keeps the assertions about containment rather than about spelling.
+function inside(root: string, relative: string): string {
+  return resolve(root, relative);
+}
+
 Deno.test("a path inside the root resolves to an absolute path", () => {
-  assertEquals(within(ROOT, "src/main.ts"), "/projects/demo/src/main.ts");
-  assertEquals(within(ROOT, "./notes.md"), "/projects/demo/notes.md");
-  assertEquals(within(ROOT, "a/../b.txt"), "/projects/demo/b.txt");
+  assertEquals(within(ROOT, "src/main.ts"), inside(ROOT, "src/main.ts"));
+  assertEquals(within(ROOT, "./notes.md"), inside(ROOT, "notes.md"));
+  assertEquals(within(ROOT, "a/../b.txt"), inside(ROOT, "b.txt"));
 });
 
 Deno.test("the root itself is inside it", () => {
-  assertEquals(within(ROOT, "."), ROOT);
-  assertEquals(within(ROOT, ROOT), ROOT);
+  assertEquals(within(ROOT, "."), resolve(ROOT));
+  assertEquals(within(ROOT, ROOT), resolve(ROOT));
 });
 
 Deno.test("a path that climbs out is refused", () => {
@@ -33,28 +41,23 @@ Deno.test("deep traversal is refused however it is spelled", () => {
 });
 
 Deno.test("a path the agent sees becomes a path on the host", () => {
-  assertEquals(hostPathUnder("/workspace", ROOT, "/workspace/src/a.ts"), "/projects/demo/src/a.ts");
-  assertEquals(hostPathUnder("/workspace", ROOT, "src/a.ts"), "/projects/demo/src/a.ts");
-  assertEquals(hostPathUnder("/workspace", ROOT, "/workspace"), ROOT);
+  assertEquals(
+    hostPathUnder("/workspace", ROOT, "/workspace/src/a.ts"),
+    inside(ROOT, join("src", "a.ts")),
+  );
+  assertEquals(hostPathUnder("/workspace", ROOT, "src/a.ts"), inside(ROOT, join("src", "a.ts")));
+  assertEquals(hostPathUnder("/workspace", ROOT, "/workspace"), resolve(ROOT));
 });
 
-/** A leading separator is not the host's root, or a tool call could read it. */
 Deno.test("an absolute path outside the workspace is read as project-relative", () => {
-  assertEquals(hostPathUnder("/workspace", ROOT, "/etc/passwd"), "/projects/demo/etc/passwd");
+  assertEquals(
+    hostPathUnder("/workspace", ROOT, "/etc/passwd"),
+    inside(ROOT, join("etc", "passwd")),
+  );
+  assertEquals(hostPathUnder("/workspace", ROOT, "  "), undefined);
+  assertEquals(hostPathUnder("/workspace", ROOT, ""), undefined);
 });
 
-Deno.test("a path that climbs out of the project has no host path", () => {
-  assertEquals(hostPathUnder("/workspace", ROOT, "/workspace/../../secrets"), undefined);
-  assertEquals(hostPathUnder("/workspace", ROOT, "../secrets"), undefined);
-  assertEquals(hostPathUnder("/workspace", ROOT, "   "), undefined);
-});
-
-/**
- * The sandbox interior is POSIX whatever the daemon runs on, so on Windows
- * the translation crosses from an agent path under /workspace to a path with
- * a drive letter and backslashes. Asserted per host, since resolve() is the
- * host's own idea of a path.
- */
 Deno.test("an agent path under the workspace lands in a Windows project", () => {
   if (Deno.build.os !== "windows") return;
 

@@ -91,9 +91,13 @@ Deno.test("the project and the state are the only writable mounts", () => {
   const args = podmanArgs(CONFIG, launch());
   const volumes = args.filter((_arg, index) => args[index - 1] === "--volume");
 
+  // The relabel exists where there is SELinux to relabel with; the podman
+  // machine on Windows has none, so its volumes go without.
+  const suffix = Deno.build.os === "windows" ? "rw" : "rw,Z";
+
   assertEquals(volumes, [
-    "/projects/demo:/workspace:rw,Z",
-    "/state/s-1:/state:rw,Z",
+    `/projects/demo:/workspace:${suffix}`,
+    `/state/s-1:/state:${suffix}`,
   ]);
 });
 

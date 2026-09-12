@@ -7,6 +7,7 @@ import {
   type Sources,
 } from "./delegation.ts";
 
+import { resolve } from "@std/path";
 const ROOT = "/projects/demo";
 
 function sources(overrides: Partial<Sources> = {}): Sources {
@@ -79,7 +80,8 @@ Deno.test("a file is read and named for attribution", async () => {
   assertEquals(isRefused(resolved), false);
   if (isRefused(resolved)) return;
   assertEquals(resolved.describes, "logs/out.txt");
-  assertEquals(resolved.content, "contents of /projects/demo/logs/out.txt");
+  // resolve() spells the path the host's way.
+  assertEquals(resolved.content, `contents of ${resolve(ROOT, "logs", "out.txt")}`);
 });
 
 /** A delegation must not read what the session itself could not. */
