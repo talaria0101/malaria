@@ -32,14 +32,19 @@ Record "b0-distro-install" @{ output = $install.Trim() }
 
 $setup = Wsl @("-d", "Ubuntu-24.04", "-u", "root", "--",
   "/bin/bash", "-lc",
-  "apt-get update -qq && apt-get install -y -qq podman >/dev/null 2>&1; podman --version; id")
+  "apt-get update -qq && apt-get install -y -qq podman >/dev/null 2>&1; apt-get install -y -qq uidmap >/dev/null 2>&1; podman --version")
 Record "b1-distro-podman" @{ output = $setup.Trim() }
+
+# Rootless pasta wants a ordinary user with subordinates; the distro's default
+# user has them on 24.04.
+$user = Wsl @("-d", "Ubuntu-24.04", "-u", "ubuntu", "--", "/bin/bash", "-lc", "id; cat /etc/subuid | head -1")
+Record "b1b-distro-user" @{ output = $user.Trim() }
 
 # ---- kernel surface (same kernel as the machine, read from a distro) --------
 
-$kernel = Wsl @("-d", "Ubuntu-24.04", "--",
+$kernel = Wsl @("-d", "Ubuntu-24.04", "-u", "root", "--",
   "/bin/bash", "-lc",
-  "uname -r; cat /sys/kernel/security/lsm 2>/dev/null; cat /sys/kernel/security/landlock/abi 2>/dev/null; stat -fc %T /sys/fs/cgroup; cat /proc/sys/user/max_user_namespaces; systemctl --version 2>/dev/null | head -1 || echo no-systemd")
+  "uname -r; sudo mount -t securityfs none /sys/kernel/security 2>/dev/null; cat /sys/kernel/security/lsm 2>/dev/null; cat /sys/kernel/security/landlock/abi 2>/dev/null; stat -fc %T /sys/fs/cgroup; cat /proc/sys/user/max_user_namespaces; systemctl --version 2>/dev/null | head -1 || echo no-systemd")
 Record "b2-distro-kernel" @{ output = $kernel.Trim() }
 
 # ---- host addresses from the distro's point of view -------------------------
@@ -60,20 +65,20 @@ Start-Sleep -Seconds 2
 # ---- reachability: restricted flags, native rootless in the distro -----------
 
 $restricted = "pasta:--map-host-loopback,none,--map-guest-addr,none"
-$targets = @($gateway, "169.254.1.2", "10.255.255.250") | Where-Object { $_ }
+$targets = @($gateway, "169.254.1.2") | Where-Object { $_ }
 $entries = @()
 foreach ($target in ($targets | Select-Object -Unique)) {
-  $out = Wsl @("-d", "Ubuntu-24.04", "--", "/bin/bash", "-lc",
-    "podman run --rm --network=$restricted alpine:3 wget -q -T 5 -O - http://${target}:8998/listener-root.txt 2>&1; echo code=`$?")
+  $out = Wsl @("-d", "Ubuntu-24.04", "-u", "ubuntu", "--", "/bin/bash", "-lc",
+    "podman run --rm --network=$restricted alpine:3 wget -q -T 5 -O - http://${target}:8998/listener-root.txt; echo probe-exit=`$?")
   $entries += @{
     target = $target
     output = $out.Trim()
   }
 }
 
-$internet = Wsl @("-d", "Ubuntu-24.04", "--", "/bin/bash", "-lc",
-  "podman run --rm --network=$restricted alpine:3 wget -q -T 10 -O - https://api.github.com/zen 2>&1; echo code=`$?")
-$uid = Wsl @("-d", "Ubuntu-24.04", "--", "/bin/bash", "-lc",
+$internet = Wsl @("-d", "Ubuntu-24.04", "-u", "ubuntu", "--", "/bin/bash", "-lc",
+  "podman run --rm --network=$restricted alpine:3 wget -q -T 10 -O - https://api.github.com/zen; echo probe-exit=`$?")
+$uid = Wsl @("-d", "Ubuntu-24.04", "-u", "ubuntu", "--", "/bin/bash", "-lc",
   "podman run --rm --userns=keep-id alpine:3 id")
 
 Record "b4-shape-b-reachability" @{

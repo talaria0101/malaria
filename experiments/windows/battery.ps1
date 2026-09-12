@@ -256,10 +256,16 @@ foreach ($spelling in @("${mountRoot}:/workspace", "${mountRoot -replace '\\','/
 }
 Record "07-volume-spellings" @{ spellings = $volumeSpellings }
 
-$fs = PodmanOutput @("run", "--rm", "--userns=keep-id", "-v", "${mountRoot}:/workspace", "alpine:3", `
-  "sh", "-c",
-  "id; echo probe > /workspace/from-container.txt; ls -l /workspace/script.sh; /workspace/script.sh; cat /proc/self/status | grep CapEff") 120
 Set-Content -Path "$mountRoot\script.sh" -Value "#!/bin/sh`necho executed-ok"
+Set-Content -Path "$mountRoot\probe.sh" -Value @'
+id
+echo probe > /workspace/from-container.txt
+ls -l /workspace/script.sh
+/workspace/script.sh
+grep CapEff /proc/self/status
+'@
+$fs = PodmanOutput @("run", "--rm", "--userns=keep-id", "-v", "${mountRoot}:/workspace", "alpine:3", `
+  "sh", "/workspace/probe.sh") 120
 Record "08-keep-id-and-drvfs" @{
   code = $fs.code
   stdout = $fs.stdout
@@ -273,8 +279,13 @@ Record "09-z-label" @{
   stderr = if ($selinux.code -ne 0) { $selinux.stderr } else { "(accepted)" }
 }
 
-$readonly = PodmanOutput @("run", "--rm", "--read-only", "--tmpfs", "/tmp", "alpine:3", `
-  "sh", "-c", "touch /root-readonly-test 2>&1; touch /tmp/tmpfs-test && echo tmpfs-ok") 120
+Set-Content -Path "$mountRoot\readonly.sh" -Value @'
+touch /root-readonly-test
+echo rootfs-code=$?
+touch /tmp/tmpfs-test && echo tmpfs-ok
+'@
+$readonly = PodmanOutput @("run", "--rm", "--read-only", "--tmpfs", "/tmp", `
+  "-v", "${mountRoot}:/workspace", "alpine:3", "sh", "/workspace/readonly.sh") 120
 Record "10-readonly-tmpfs" @{
   code = $readonly.code
   stdout = $readonly.stdout
@@ -282,9 +293,13 @@ Record "10-readonly-tmpfs" @{
 
 # ---- 6. limits -------------------------------------------------------------
 
+Set-Content -Path "$mountRoot\limits.sh" -Value @'
+echo memory.max=$(cat /sys/fs/cgroup/memory.max)
+echo cpu.max=$(cat /sys/fs/cgroup/cpu.max)
+echo pids.max=$(cat /sys/fs/cgroup/pids.max)
+'@
 $limits = PodmanOutput @("run", "--rm", "--memory", "512m", "--cpus", "1.5", `
-  "--pids-limit", "64", "alpine:3", `
-  "sh", "-c", "cat /sys/fs/cgroup/memory.max; cat /sys/fs/cgroup/cpu.max; cat /sys/fs/cgroup/pids.max") 120
+  "--pids-limit", "64", "-v", "${mountRoot}:/workspace", "alpine:3", "sh", "/workspace/limits.sh") 120
 Record "11-limits-in-container" @{
   code = $limits.code
   stdout = $limits.stdout
@@ -293,34 +308,40 @@ Record "11-limits-in-container" @{
 
 # ---- 7. exit codes ---------------------------------------------------------
 
-$exit137 = PodmanOutput @("run", "--rm", "alpine:3", "sh", "-c", "kill -9 `"`$`$`"") 120
-$exit42 = PodmanOutput @("run", "--rm", "alpine:3", "sh", "-c", "exit 42") 120
+Set-Content -Path "$mountRoot\sigkill.sh" -Value "kill -9 `$$`n"
+$exit137 = PodmanOutput @("run", "--rm", "-v", "${mountRoot}:/workspace", "alpine:3", `
+  "sh", "/workspace/sigkill.sh") 120
+$exit42 = PodmanOutput @("run", "--rm", "alpine:3", "false") 120
 $stdin = Run "stdin piping" {
-  $p = Start-Process -FilePath "podman" -ArgumentList "run", "--rm", "-i", "alpine:3", "cat" `
-    -NoNewWindow -Wait -PassThru `
-    -RedirectStandardInput "$env:TEMP\stdin-in.txt" `
-    -RedirectStandardOutput "$env:TEMP\stdin-out.txt"
-  Set-Content -Path "$env:TEMP\stdin-in.txt" -Value "piped-line"
-  return @{ code = $p.ExitCode; stdout = (Get-Content "$env:TEMP\stdin-out.txt" -Raw) }
+  # The RPC channel is exactly this: lines in on stdin, lines back on stdout.
+  $out = "piped-line" | & podman run --rm -i alpine:3 cat
+  return @{ stdout = ($out | Out-String).Trim() }
 }
 Record "12-exit-codes-and-stdin" @{
   sigkill = @{ code = $exit137.code }
-  explicit = @{ code = $exit42.code }
+  false = @{ code = $exit42.code }
   stdinPiping = $stdin
 }
 
 # ---- 8. kernel surface inside the machine -----------------------------------
 
-$kernel = Ssh "uname -r; cat /sys/kernel/security/lsm 2>/dev/null; cat /sys/kernel/security/landlock/abi 2>/dev/null; stat -fc %T /sys/fs/cgroup; cat /proc/sys/user/max_user_namespaces; ls /init 2>&1 | head -1; ls /proc/sys/fs/binfmt_misc/ 2>/dev/null"
+$kernel = Ssh "uname -r; sudo mount -t securityfs none /sys/kernel/security 2>&1; cat /sys/kernel/security/lsm 2>/dev/null; cat /sys/kernel/security/landlock/abi 2>/dev/null; stat -fc %T /sys/fs/cgroup; cat /proc/sys/user/max_user_namespaces; ls /init 2>&1 | head -1; ls /proc/sys/fs/binfmt_misc/ 2>/dev/null"
 Record "13-machine-kernel" @{
   stdout = $kernel
 }
 
 # ---- 9. the /init interop question ------------------------------------------
 
-$interop = PodmanOutput @("run", "--rm", "alpine:3", `
-  "sh", "-c",
-  "printf 'MZ' > /tmp/fake.exe; chmod +x /tmp/fake.exe; /tmp/fake.exe 2>&1; echo exec-code=`$?; ls /proc/sys/fs/binfmt_misc/ 2>&1") 120
+Set-Content -Path "$mountRoot\interop.sh" -Value @'
+echo MZ > /tmp/fake.exe
+chmod +x /tmp/fake.exe
+/tmp/fake.exe
+echo exec-code=$?
+ls /proc/sys/fs/binfmt_misc/
+echo binfmt-done
+'@
+$interop = PodmanOutput @("run", "--rm", "-v", "${mountRoot}:/workspace", "alpine:3", `
+  "sh", "/workspace/interop.sh") 120
 Record "14-interop-from-container" @{
   code = $interop.code
   stdout = $interop.stdout
