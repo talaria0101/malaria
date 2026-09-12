@@ -1,0 +1,11 @@
+{
+  "false": {
+    "code": 1
+  },
+  "stdinPiping": {
+    "stdout": "piped-line"
+  },
+  "sigkill": {
+    "code": 137
+  }
+}

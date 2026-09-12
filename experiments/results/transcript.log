@@ -1,0 +1,263 @@
+**********************
+PowerShell transcript start
+Start time: 20260912125608
+Username: runnervmvmocb\runneradmin
+RunAs User: runnervmvmocb\runneradmin
+Configuration Name: 
+Machine: runnervmvmocb (Microsoft Windows NT 10.0.26100.0)
+Host Application: C:\Program Files\PowerShell\7\pwsh.dll -command . 'D:\a\_temp\38424ae1-b6eb-4658-b684-28e817a83909.ps1'
+Process ID: 8296
+PSVersion: 7.6.5
+PSEdition: Core
+GitCommitId: 7.6.5
+OS: Microsoft Windows 10.0.26100
+Platform: Win32NT
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1, 6.0, 7.0
+PSRemotingProtocolVersion: 2.4
+SerializationVersion: 1.1.0.1
+WSManStackVersion: 3.0
+**********************
+[12:56:08] environment
+[12:56:08] 00-environment
+{
+  "wslVersion": "W\u0000S\u0000L\u0000 \u0000v\u0000e\u0000r\u0000s\u0000i\u0000o\u0000n\u0000:\u0000 \u00002\u0000.\u00007\u0000.\u00001\u00003\u0000.\u00000\u0000\r\n\u0000\r\n\u0000K\u0000e\u0000r\u0000n\u0000e\u0000l\u0000 \u0000v\u0000e\u0000r\u0000s\u0000i\u0000o\u0000n\u0000:\u0000 \u00006\u0000.\u00001\u00008\u0000.\u00003\u00003\u0000.\u00002\u0000-\u00002\u0000\r\n\u0000\r\n\u0000W\u0000S\u0000L\u0000g\u0000 \u0000v\u0000e\u0000r\u0000s\u0000i\u0000o\u0000n\u0000:\u0000 \u00001\u0000.\u00000\u0000.\u00007\u00003\u0000.\u00002\u0000\r\n\u0000\r\n\u0000M\u0000S\u0000R\u0000D\u0000C\u0000 \u0000v\u0000e\u0000r\u0000s\u0000i\u0000o\u0000n\u0000:\u0000 \u00001\u0000.\u00002\u0000.\u00007\u00002\u00001\u00004\u0000\r\n\u0000\r\n\u0000D\u0000i\u0000r\u0000e\u0000c\u0000t\u00003\u0000D\u0000 \u0000v\u0000e\u0000r\u0000s\u0000i\u0000o\u0000n\u0000:\u0000 \u00001\u0000.\u00006\u00001\u00001\u0000.\u00001\u0000-\u00008\u00001\u00005\u00002\u00008\u00005\u00001\u00001\u0000\r\n\u0000\r\n\u0000D\u0000X\u0000C\u0000o\u0000r\u0000e\u0000 \u0000v\u0000e\u0000r\u0000s\u0000i\u0000o\u0000n\u0000:\u0000 \u00001\u00000\u0000.\u00000\u0000.\u00002\u00006\u00001\u00000\u00000\u0000.\u00001\u0000-\u00002\u00004\u00000\u00003\u00003\u00001\u0000-\u00001\u00004\u00003\u00005\u0000.\u0000g\u0000e\u0000-\u0000r\u0000e\u0000l\u0000e\u0000a\u0000s\u0000e\u0000\r\n\u0000\r\n\u0000W\u0000i\u0000n\u0000d\u0000o\u0000w\u0000s\u0000 \u0000v\u0000e\u0000r\u0000s\u0000i\u0000o\u0000n\u0000:\u0000 \u00001\u00000\u0000.\u00000\u0000.\u00002\u00006\u00001\u00000\u00000\u0000.\u00003\u00003\u00002\u00009\u00006\u0000\r\n\u0000\r\n\u0000",
+  "windowsVersion": "Microsoft Windows NT 10.0.26100.0",
+  "distros": "Windows Subsystem for Linux has no installed distributions.\r\n\r\nYou can resolve this by installing a distribution with the instructions below:\r\n\r\n\r\n\r\nUse 'wsl.exe --list --online' to list available distributions\r\n\r\nand 'wsl.exe --install <Distro>' to install."
+}
+[12:56:08] install podman
+[12:56:08] choco install podman-cli
+Chocolatey v2.7.4
+Installing the following packages:
+podman-cli
+By installing, you accept licenses for the packages.
+Downloading package from source 'https://community.chocolatey.org/api/v2/'
+
+podman-cli v6.1.1 [Approved]
+podman-cli package files install completed. Performing other installation steps.
+Downloading podman-cli 64 bit
+  from 'https://github.com/podman-container-tools/podman/releases/download/v6.1.1/podman-remote-release-windows_amd64.zip'
+
+Download of podman-remote-release-windows_amd64.zip (30.83 MB) completed.
+Hashes match.
+Extracting C:\Users\runneradmin\AppData\Local\Temp\chocolatey\podman-cli\6.1.1\podman-remote-release-windows_amd64.zip to C:\ProgramData\chocolatey\lib\podman-cli\tools...
+C:\ProgramData\chocolatey\lib\podman-cli\tools
+ ShimGen has successfully created a shim for gvproxy.exe
+ ShimGen has successfully created a shim for podman.exe
+ ShimGen has successfully created a shim for win-sshproxy.exe
+ The install of podman-cli was successful.
+  Deployed to 'C:\ProgramData\chocolatey\lib\podman-cli\tools'
+
+Chocolatey installed 1/1 packages.
+ See the log for details (C:\ProgramData\chocolatey\logs\chocolatey.log).
+podman: C:\ProgramData\Chocolatey\bin\podman.exe
+[12:56:28] wsl default version
+[12:56:28] wsl --set-default-version 2
+For information on key differences with WSL 2 please visit https://aka.ms/wsl2
+
+The operation completed successfully.
+
+
+[12:56:28] podman machine init
+[12:57:07] 01-machine-init
+{
+  "result": {
+    "stderr": "Getting image source signatures\nCopying blob sha256:798f8e9d219cd0365762deaee5e8e84fb41fc184e4d5e672969e4caa55574c46\nCopying config sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a\nWriting manifest to image destination\n",
+    "code": 0,
+    "stdout": "Looking up Podman Machine image at quay.io/podman/machine-os:6.1 to create VM\n798f8e9d219cd0365762deaee5e8e84fb41fc184e4d5e672969e4caa55574c46\nImporting operating system into WSL (this may take a few minutes on a new WSL install)...\nThe operation completed successfully. \r\nConfiguring system...\nMachine init complete\nTo start your machine run:\n\n\tpodman machine start\n\n"
+  }
+}
+[12:57:07] podman machine start (streamed)
+[12:57:07] machine start
+[12:57:16] 02-machine-start
+{
+  "note": "exited",
+  "code": 0
+}
+[12:57:16] podman info --format {{.Host.Security.Rootless}}
+[12:57:16] podman info --format {{json .}}
+[12:57:16] 03-info-rootless
+{
+  "networkBackend": null,
+  "podmanVersion": null,
+  "throughWsl": false,
+  "rootless": "true",
+  "hostArch": null,
+  "cgroupManager": null
+}
+[12:57:16] host listener
+listener pid: 2076
+[12:57:18] candidate addresses
+[12:57:22] podman machine ssh: ip route show default
+[12:57:23] podman machine ssh: ip -4 addr show eth0
+[12:57:25] 04-host-addresses
+{
+  "machineDefaultRoute": "default via 172.21.224.1 dev eth0 proto kernel \n",
+  "wslAdapters": [
+    "vEthernet (WSL (Hyper-V firewall))=172.21.224.1",
+    "vEthernet (nat)=192.168.0.1"
+  ],
+  "hyperVFirewall": "\r\nName                                   DefaultInboundAction LoopbackEnabled\r\n----                                   -------------------- ---------------\r\n{40E0AC32-46A5-438A-A0B2-2B479E8F2E90}        NotConfigured   NotConfigured\r\n\r\n",
+  "primary": "10.1.0.10",
+  "machineEth0": "2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc mq state UP group default qlen 1000\n    altname enx00155d8a9298\n    inet 172.21.229.186/20 brd 172.21.239.255 scope global eth0\n       valid_lft forever preferred_lft forever\n"
+}
+[12:57:25] podman run --rm --network=pasta:--map-host-loopback,none,--map-guest-addr,none alpine:3 wget -q -T 5 -O - http://172.21.224.1:8999/listener-root.txt
+[12:57:33] podman run --rm --network=pasta:--map-host-loopback,none,--map-guest-addr,none alpine:3 wget -q -T 5 -O - http://169.254.1.2:8999/listener-root.txt
+[12:57:39] podman run --rm --network=pasta:--map-host-loopback,none,--map-guest-addr,none alpine:3 wget -q -T 5 -O - http://host.containers.internal:8999/listener-root.txt
+[12:57:45] podman run --rm --network=pasta:--map-host-loopback,none,--map-guest-addr,none alpine:3 nslookup api.github.com
+[12:57:46] podman run --rm --network=pasta:--map-host-loopback,none,--map-guest-addr,none alpine:3 wget -q -T 10 -O - https://api.github.com/zen
+[12:57:47] 05-restricted-network
+{
+  "targets": [
+    {
+      "reached": false,
+      "target": "172.21.224.1",
+      "code": 1,
+      "note": "wget: download timed out | "
+    },
+    {
+      "reached": false,
+      "target": "169.254.1.2",
+      "code": 1,
+      "note": "wget: download timed out | "
+    },
+    {
+      "reached": false,
+      "target": "host.containers.internal",
+      "code": 1,
+      "note": "wget: download timed out | "
+    }
+  ],
+  "internet": {
+    "body": "Mind your words, they are important.",
+    "code": 0
+  },
+  "label": "restricted (errand flags)",
+  "dns": {
+    "note": "resolved",
+    "code": 0
+  }
+}
+[12:57:47] podman run --rm --network=pasta alpine:3 wget -q -T 5 -O - http://172.21.224.1:8999/listener-root.txt
+[12:57:53] podman run --rm --network=pasta alpine:3 wget -q -T 5 -O - http://169.254.1.2:8999/listener-root.txt
+[12:57:54] podman run --rm --network=pasta alpine:3 wget -q -T 5 -O - http://host.containers.internal:8999/listener-root.txt
+[12:58:00] podman run --rm --network=pasta alpine:3 nslookup api.github.com
+[12:58:01] podman run --rm --network=pasta alpine:3 wget -q -T 10 -O - https://api.github.com/zen
+[12:58:02] 06-default-network
+{
+  "targets": [
+    {
+      "reached": false,
+      "target": "172.21.224.1",
+      "code": 1,
+      "note": "wget: download timed out | "
+    },
+    {
+      "reached": false,
+      "target": "169.254.1.2",
+      "code": 1,
+      "note": "wget: can't connect to remote host (169.254.1.2): Connection refused | "
+    },
+    {
+      "reached": false,
+      "target": "host.containers.internal",
+      "code": 1,
+      "note": "wget: download timed out | "
+    }
+  ],
+  "internet": {
+    "body": "Mind your words, they are important.",
+    "code": 0
+  },
+  "label": "podman default pasta",
+  "dns": {
+    "note": "resolved",
+    "code": 0
+  }
+}
+[12:58:02] podman run --rm -v C:\errand-probe-mount:/workspace alpine:3 sh -c echo probe > /workspace/probe.txt
+[12:58:03] podman run --rm -v :/workspace alpine:3 sh -c echo probe > /workspace/probe.txt
+[12:58:03] 07-volume-spellings
+{
+  "spellings": [
+    {
+      "note": "accepted",
+      "spelling": "C:\\errand-probe-mount:/workspace",
+      "code": 0
+    },
+    {
+      "note": "",
+      "spelling": ":/workspace",
+      "code": 125
+    }
+  ]
+}
+[12:58:03] podman run --rm --userns=keep-id -v C:\errand-probe-mount:/workspace alpine:3 sh /workspace/probe.sh
+[12:58:04] 08-keep-id-and-drvfs
+{
+  "stderr": "",
+  "code": 0,
+  "stdout": "uid=1000(user) gid=1000(user) groups=1000(user)\n-rwxrwxrwx    1 user     user            26 Sep 12 12:58 /workspace/script.sh\nexecuted-ok\nCapEff:\t0000000000000000\n"
+}
+[12:58:04] podman run --rm -v C:\errand-probe-mount:/workspace:rw,Z alpine:3 touch /workspace/from-z-label.txt
+[12:58:05] 09-z-label
+{
+  "code": 0,
+  "stderr": "(accepted)"
+}
+[12:58:05] podman run --rm --read-only --tmpfs /tmp -v C:\errand-probe-mount:/workspace alpine:3 sh /workspace/readonly.sh
+[12:58:06] 10-readonly-tmpfs
+{
+  "code": 0,
+  "stdout": "rootfs-code=1\ntmpfs-ok\n"
+}
+[12:58:06] podman run --rm --memory 512m --cpus 1.5 --pids-limit 64 -v C:\errand-probe-mount:/workspace alpine:3 sh /workspace/limits.sh
+[12:58:07] 11-limits-in-container
+{
+  "stderr": "",
+  "code": 0,
+  "stdout": "memory.max=536870912\ncpu.max=150000 100000\npids.max=64\n"
+}
+[12:58:07] podman run --rm --memory 6m -v C:\errand-probe-mount:/workspace alpine:3 sh /workspace/hog.sh
+[12:58:08] podman run --rm alpine:3 false
+[12:58:09] stdin piping
+[12:58:10] 12-exit-codes-and-stdin
+{
+  "false": {
+    "code": 1
+  },
+  "stdinPiping": {
+    "stdout": "piped-line"
+  },
+  "sigkill": {
+    "code": 137
+  }
+}
+[12:58:10] podman machine ssh: uname -r; sudo mount -t securityfs none /sys/kernel/security 2>&1; sudo ls /sys/kernel/security/ 2>&1; cat /sys/kernel/security/lsm 2>/dev/null; stat -fc %T /sys/fs/cgroup; cat /proc/sys/user/max_user_namespaces; ls /init 2>&1 | head -1; python3 /mnt/c/errand-probe-mount/abi.py 2>&1 | tail -1; ls /proc/sys/fs/binfmt_misc/ 2>/dev/null
+[12:58:11] 13-machine-kernel
+{
+  "stdout": "6.18.33.2-microsoft-standard-WSL2\nima\nintegrity\nlsm\nsafesetid\ncapability,landlock,yama,safesetid,selinux,imacgroup2fs\n31719\n/init\nabi-version -1 errno 22\n"
+}
+[12:58:11] podman run --rm -v C:\errand-probe-mount:/workspace alpine:3 sh /workspace/interop.sh
+[12:58:11] 14-interop-from-container
+{
+  "stderr": "<3>WSL (3 - ) ERROR: UtilGetPpid:1330: Failed to parse: /proc/1/stat, content: 1 (sh) S 0 1 1 0 -1 4194560 106 43 0 0 0 0 0 0 20 0 1 0 9039 1691648 262 18446744073709551615 104605213040640 104605213665251 140727512380960 0 0 0 0 4 65538 1 0 0 17 0 0 0 0 0 0 104605213808688 104605213823024 104605221109760 140727512383331 140727512383356 140727512383356 140727512383472 0\n",
+  "code": 0,
+  "stdout": "exec-code=1\nbinfmt-done\n"
+}
+[12:58:11] podman machine ssh: dd if=/dev/zero of=/tmp/ddtest bs=1M count=128 2>&1 | tail -1
+[12:58:12] podman machine ssh: rm -f /tmp/ddtest
+[12:58:13] podman run --rm -v C:\errand-probe-mount:/workspace alpine:3 dd if=/dev/zero of=/workspace/ddtest bs=1M count=128
+[12:58:16] 15-write-throughput
+{
+  "ext4InMachine": "134217728 bytes (134 MB, 128 MiB) copied, 0.172408 s, 778 MB/s\n",
+  "drvfsThroughMount": {
+    "code": 0,
+    "tail": "134217728 bytes (128.0MB) copied, 2.017781 seconds, 63.4MB/s | "
+  }
+}
+[12:58:16] podman machine stop
+machine stop: 0
+**********************
+PowerShell transcript end
+End time: 20260912125818
+**********************

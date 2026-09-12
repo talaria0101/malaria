@@ -1,0 +1,5 @@
+{
+  "stderr": "",
+  "code": 0,
+  "stdout": "uid=1000(user) gid=1000(user) groups=1000(user)\n-rwxrwxrwx    1 user     user            26 Sep 12 12:58 /workspace/script.sh\nexecuted-ok\nCapEff:\t0000000000000000\n"
+}

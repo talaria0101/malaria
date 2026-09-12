@@ -1,0 +1,5 @@
+{
+  "stderr": "",
+  "code": 0,
+  "stdout": "memory.max=536870912\ncpu.max=150000 100000\npids.max=64\n"
+}

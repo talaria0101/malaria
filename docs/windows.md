@@ -57,19 +57,46 @@ from here. The daemon reports this as a gap rather than guessing at your
 firewall: with `sandbox.network` set to `none` the question disappears, and
 otherwise it is yours to close and to verify. To see which way your machine
 falls, run a listener on Windows and try it from a container on the machine's
-network; the battery in `experiments/windows/battery.ps1` is exactly that.
+network; the battery in `experiments/windows/battery.ps1` is exactly that,
+and its run on a stock Windows Server 2025 runner measured this way:
+
+- with the errand flags: internet and DNS reachable, the machine's mapped
+  address (169.254.1.2) unreachable, the Windows host (the WSL NAT gateway)
+  unreachable, `host.containers.internal` unreachable;
+- with podman's default pasta: internet and DNS reachable, the mapped
+  address answering (connection refused, which is the mapping alive), the
+  Windows host still unreachable behind the firewall's default.
+
+So on a stock host the Windows hop starts closed and the flags do exactly
+what they do on Linux, one hop nearer. The gap stays in the report because
+the firewall is yours: a `Set-NetFirewallHyperVVMSetting` change reopens the
+path and the daemon has no way to see that from inside.
 
 **Volumes are not relabelled.** On Linux, errand mounts the project and the
 state directory with `:Z`, which relabels them for SELinux and keeps a shared
 volume from becoming a hole. The podman machine has no SELinux to relabel
-with, so on Windows the suffix is plain `rw`. Nothing else about the mounts
-changes: `--read-only`, the tmpfs at `/tmp`, and `--userns=keep-id` are
-passed and hold as on Linux.
+with, so on Windows the suffix is plain `rw`, which the client accepted
+without complaint. Nothing else about the mounts changes: `--read-only`, the
+tmpfs at `/tmp`, and `--userns=keep-id` are passed and hold as on Linux, and
+keep-id mapped to the machine's own user, uid 1000, as expected. Files the
+daemon writes into the mount arrive executable inside the container, because
+the drive mount maps them 0777; the daemon's `chmod 0755` is a formality
+there. A fixed write measured about eleven times slower through the drive
+mount than on the machine's own filesystem (69 MB/s against 767 MB/s), which
+is the number behind the advice above.
 
 Everything else in [sandboxing](/sandboxing) reads the same on Windows: one
 container per session, capability dropped set, no new privileges, memory,
 cpu, process, and single-file limits, and a state directory the agent can
-write and nothing else.
+write and nothing else. Measured on the same run: a container started with
+`--cap-drop=ALL` reports zero effective capabilities, `--read-only` refuses
+writes to the root filesystem while the tmpfs at `/tmp` stays writable,
+`--memory`, `--cpus`, and `--pids-limit` arrive in the container's own cgroup
+(512m, 1.5 cores, 64 processes in the probe), and a container killed by its
+memory limit relays exit code 137 to the daemon, so the resource-limit
+diagnosis reads the same as on Linux. The RPC channel between the daemon and
+the agent is lines on stdin and stdout, and a line piped through the Windows
+client into a container and back came out intact.
 
 ## Configuration
 
@@ -129,20 +156,38 @@ namespaces. It is a Linux tool and stays one: on a Windows host the probe
 refuses it with the reason, and there is nothing to fix, because the backend
 that works there is podman.
 
-Inside WSL it is a different question. Microsoft's kernel has shipped
-Landlock since the 5.15 branch and it is active in the LSM list, so the
-filesystem policy applies. Network rules are the part with a version floor:
-they need Landlock ABI 4, which is Linux 6.7, and WSL installs on older
-branches (5.15, 6.1, 6.6) are below it. The tool negotiates down instead of
-failing, so a session would run while its egress policy was silently
-skipped; the daemon now reads the ABI out of the tool's report and refuses to
-start a networked session on a kernel below 4, naming both the number it
-found and the two ways out: a newer kernel (WSL2's current kernel is above
-the floor), or `sandbox.network` set to `none`.
+Inside WSL it is a different question, and the honest answer is that it
+depends on the kernel in ways the daemon refuses to guess about. Microsoft's
+kernel branches all ship Landlock and list it in the LSM set, so the
+filesystem policy should apply; the machine the battery booted runs kernel
+6.18, and its LSM list said `capability,landlock,yama,safesetid,selinux`.
+But the same kernel answered a Landlock version query with EINVAL and
+published no landlock directory under securityfs, so whether Landlock is
+usable there is not settled by reading the config or the list. This is why
+the daemon does not take bailey's word for any of it: bailey's own probe
+attempts the real setup in a throwaway child, and errand refuses to start on
+anything the probe cannot prove. What the port adds is the one check the
+tool's report cannot self-certify: network rules need Landlock ABI 4
+(Linux 6.7), the tool negotiates down instead of failing, and a networked
+session on a kernel below that now refuses to start rather than run with its
+egress policy silently skipped.
 
 Per-session memory, cpu, and process limits inside WSL want `systemd=true`
 in `/etc/wsl.conf`, so there is a cgroup subtree to delegate; without it the
 daemon reports the same gap it reports on any Linux host without delegation.
+One more shape-B caveat is measured: Ubuntu 24.04's pasta predates
+`--map-host-loopback`, so the restricted-network flags refuse to start there;
+use a distro whose pasta is new enough, which the podman machine's own Fedora
+image is.
+
+## The binfmt question, measured
+
+WSL's Windows interop is a binfmt_misc handler: the kernel routes PE
+executables to /init, which launches them on the Windows side. The handler
+is registered kernel-wide, so a container's exec of a Windows binary reaches
+it. Measured: the exec failed inside the container (exit 1, no Windows
+process, the container's shell carried on), with the handler complaining on
+its way out. The path is reachable but fails closed.
 
 ## What was measured, and where
 
@@ -154,5 +199,11 @@ daemon reports the same gap it reports on any Linux host without delegation.
 - the runtime choice (Deno, and why not Bun) is `research/runtimes.md`, with
   the refusal-by-default experiment run on both runtimes;
 - what a real podman machine on WSL2 does with all of it is the battery in
-  `experiments/windows/battery.ps1`, and its recorded output is committed
-  under `experiments/results/`.
+  `experiments/windows/battery.ps1`, run on a GitHub windows-latest runner
+  with podman 6.1.1 and a machine on kernel 6.18, and its recorded output is
+  committed under `experiments/results/`;
+- the daemon's own suite runs green on both Linux and Windows runners, and
+  the Windows binary is built on every push.
+
+How the reviews of this port were run, and what each one found, is in
+`docs/reviews.md`.

@@ -1,0 +1,10 @@
+{
+  "machineDefaultRoute": "default via 172.21.224.1 dev eth0 proto kernel \n",
+  "wslAdapters": [
+    "vEthernet (WSL (Hyper-V firewall))=172.21.224.1",
+    "vEthernet (nat)=192.168.0.1"
+  ],
+  "hyperVFirewall": "\r\nName                                   DefaultInboundAction LoopbackEnabled\r\n----                                   -------------------- ---------------\r\n{40E0AC32-46A5-438A-A0B2-2B479E8F2E90}        NotConfigured   NotConfigured\r\n\r\n",
+  "primary": "10.1.0.10",
+  "machineEth0": "2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc mq state UP group default qlen 1000\n    altname enx00155d8a9298\n    inet 172.21.229.186/20 brd 172.21.239.255 scope global eth0\n       valid_lft forever preferred_lft forever\n"
+}

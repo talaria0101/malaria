@@ -1,0 +1,7 @@
+{
+  "result": {
+    "stderr": "Getting image source signatures\nCopying blob sha256:798f8e9d219cd0365762deaee5e8e84fb41fc184e4d5e672969e4caa55574c46\nCopying config sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a\nWriting manifest to image destination\n",
+    "code": 0,
+    "stdout": "Looking up Podman Machine image at quay.io/podman/machine-os:6.1 to create VM\n798f8e9d219cd0365762deaee5e8e84fb41fc184e4d5e672969e4caa55574c46\nImporting operating system into WSL (this may take a few minutes on a new WSL install)...\nThe operation completed successfully. \r\nConfiguring system...\nMachine init complete\nTo start your machine run:\n\n\tpodman machine start\n\n"
+  }
+}

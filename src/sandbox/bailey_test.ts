@@ -286,14 +286,16 @@ Deno.test("a kernel that cannot enforce network rules may still run offline sess
   const { run } = fakeRun({
     doctor: { stdout: "landlock: yes (abi 2)\nuser namespaces: yes\ncgroup delegation: yes" },
   });
+  const root = await Deno.makeTempDir();
   const sandbox = new BaileySandbox(
     { ...CONFIG, network: "none" },
     createLogger({}, () => {}),
-    "/state",
+    root,
     run,
     FAKE_RUNTIME,
   );
 
   const report = await sandbox.probe();
   assertEquals(report.gaps, []);
+  await Deno.remove(root, { recursive: true });
 });

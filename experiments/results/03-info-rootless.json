@@ -1,0 +1,8 @@
+{
+  "networkBackend": null,
+  "podmanVersion": null,
+  "throughWsl": false,
+  "rootless": "true",
+  "hostArch": null,
+  "cgroupManager": null
+}

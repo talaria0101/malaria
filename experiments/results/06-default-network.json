@@ -1,0 +1,31 @@
+{
+  "targets": [
+    {
+      "reached": false,
+      "target": "172.21.224.1",
+      "code": 1,
+      "note": "wget: download timed out | "
+    },
+    {
+      "reached": false,
+      "target": "169.254.1.2",
+      "code": 1,
+      "note": "wget: can't connect to remote host (169.254.1.2): Connection refused | "
+    },
+    {
+      "reached": false,
+      "target": "host.containers.internal",
+      "code": 1,
+      "note": "wget: download timed out | "
+    }
+  ],
+  "internet": {
+    "body": "Mind your words, they are important.",
+    "code": 0
+  },
+  "label": "podman default pasta",
+  "dns": {
+    "note": "resolved",
+    "code": 0
+  }
+}

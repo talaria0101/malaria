@@ -1,0 +1,7 @@
+{
+  "ext4InMachine": "134217728 bytes (134 MB, 128 MiB) copied, 0.172408 s, 778 MB/s\n",
+  "drvfsThroughMount": {
+    "code": 0,
+    "tail": "134217728 bytes (128.0MB) copied, 2.017781 seconds, 63.4MB/s | "
+  }
+}

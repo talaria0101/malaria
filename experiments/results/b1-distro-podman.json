@@ -1,0 +1,3 @@
+{
+  "output": "podman version 4.9.3\r\nuid=1000(runner) gid=1000(runner) groups=1000(runner)"
+}

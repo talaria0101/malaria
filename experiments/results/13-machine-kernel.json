@@ -1,0 +1,3 @@
+{
+  "stdout": "6.18.33.2-microsoft-standard-WSL2\nima\nintegrity\nlsm\nsafesetid\ncapability,landlock,yama,safesetid,selinux,imacgroup2fs\n31719\n/init\nabi-version -1 errno 22\n"
+}

@@ -1,0 +1,70 @@
+[
+  {
+    "name": "deno.build.os",
+    "result": "windows"
+  },
+  {
+    "name": "deno.version",
+    "result": "2.9.6"
+  },
+  {
+    "name": "execPath",
+    "result": "C:\\Users\\runneradmin\\.deno\\bin\\deno.exe"
+  },
+  {
+    "name": "env: USERPROFILE/HOME/APPDATA",
+    "result": "{\"USERPROFILE\":\"set\",\"HOME\":\"unset\",\"APPDATA\":\"set\",\"PATHEntries\":0}"
+  },
+  {
+    "name": "Deno.Command resolves podman from PATH",
+    "result": "code 0, podman version 6.1.1"
+  },
+  {
+    "name": "Deno.Command resolves a .cmd shim (deno.cmd style)",
+    "result": "code 0, git version 2.55.0.windows.5"
+  },
+  {
+    "name": "child.kill('SIGTERM') on Windows",
+    "result": "exited with 1 after SIGTERM"
+  },
+  {
+    "name": "Deno.kill(pid, 'SIGURG') on Windows",
+    "result": "threw: Invalid signal: SIGURG"
+  },
+  {
+    "name": "Deno.kill with negative pid on Windows",
+    "result": "threw: Invalid pid"
+  },
+  {
+    "name": "addSignalListener('SIGTERM')",
+    "result": "registered and removed"
+  },
+  {
+    "name": "addSignalListener('SIGINT')",
+    "result": "registered and removed"
+  },
+  {
+    "name": "Deno.serve on 127.0.0.1",
+    "result": "served ok"
+  },
+  {
+    "name": "chmodSync then stat mode",
+    "result": "mode after chmod 0600: 100666"
+  },
+  {
+    "name": "symlinkSync",
+    "result": "threw: TypeError: On Windows an `options` argument is required if the target does not exist: symlink 'C:\\Users\\RUNNER~1\\AppData\\Local\\Temp/errand-symlink-probe/target' -> 'C:\\Users\\RUNNER~1\\AppData\\Local\\Temp/errand-symlink-probe/link'"
+  },
+  {
+    "name": "realPathSync reports actual casing",
+    "result": "C:\\Users\\runneradmin\\AppData\\Local\\Temp\\ERRAND-cAsE-Probe"
+  },
+  {
+    "name": "writeTextFile newline handling",
+    "result": "bytes: 97,10,98,10"
+  },
+  {
+    "name": "path separators",
+    "result": "{\"sep\":\"\\\\\",\"resolveOfWorkspace\":\"C:\\\\workspace\\\\x\"}"
+  }
+]
