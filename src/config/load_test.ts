@@ -54,8 +54,12 @@ Deno.test("the first one that is actually there is the one used", () => {
     "/etc/errand/config.json",
   );
   assertEquals(configPath(env, (path) => path === "config.json", false), "config.json");
-  // With none of them there, the failure names the place most likely meant.
-  assertEquals(configPath(env, () => false, false), "/home/amelia/.config/errand/config.json");
+  // With none of them there, the failure names the place most likely meant,
+  // spelled the way this host spells a joined path.
+  assertEquals(
+    configPath(env, () => false, false),
+    join("/home/amelia", ".config", "errand", "config.json"),
+  );
 });
 
 Deno.test("a valid file loads", () => {
