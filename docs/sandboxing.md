@@ -187,6 +187,6 @@ configured, because reading issues and checking builds is most of working on
 somebody's repository.
 
 It does not hold the chat token, and everything a session reports is scrubbed of
-every configured secret before it reaches a channel, a browser, or the
-transcript on disk. That is damage control on an unavoidable exposure rather
+every configured secret before it reaches a channel or the transcript
+on disk. That is damage control on an unavoidable exposure rather
 than a boundary: an agent that re-encodes a key defeats it.

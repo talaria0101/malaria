@@ -7,7 +7,7 @@
   "tasks": {
     "ascii": "deno run --allow-read --allow-run scripts/check_ascii.ts",
     "build": "deno task build:bin",
-    "build:bin": "deno compile --allow-net --allow-env --allow-read --allow-write --allow-run --include dist/web --output dist/errand src/main.ts",
+    "build:bin": "deno compile --allow-net --allow-env --allow-read --allow-write --allow-run --output dist/errand src/main.ts",
     "check": "deno fmt --check && deno lint && deno check src/ scripts/ && deno task test && deno task ascii && deno task docs:check",
     "docs": "deno run --allow-read --allow-write scripts/generate_docs.ts",
     "docs:check": "deno run --allow-read scripts/generate_docs.ts --check",
@@ -20,12 +20,10 @@
   },
   "exclude": [
     "dist",
-    "node_modules",
-    "docs/.vitepress/cache"
+    "node_modules"
   ],
   "fmt": {
     "exclude": [
-      "web",
       "docs/reference",
       "config.schema.json"
     ],
@@ -37,9 +35,7 @@
     "proseWrap": "preserve"
   },
   "lint": {
-    "exclude": [
-      "web"
-    ],
+    "exclude": [],
     "rules": {
       "tags": [
         "recommended"

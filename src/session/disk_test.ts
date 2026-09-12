@@ -26,7 +26,7 @@ Deno.test("a symlink counts as the link, not as what it points at", async () => 
   await Deno.remove(root, { recursive: true });
 });
 
-Deno.test("a directory that is not there is not zero", async () => {
+Deno.test("a directory that is not there is not zero", () => {
   assertEquals(treeBytes("/no/such/place/at/all"), undefined);
 });
 

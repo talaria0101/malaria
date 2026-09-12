@@ -93,8 +93,8 @@ The Linux build of the repository cross-compiles the Windows binary, so a
 Windows host needs neither a checkout nor a toolchain:
 
 ```sh
-deno task build:web
-deno compile --target x86_64-pc-windows-msvc --allow-net --allow-env --allow-read --allow-write --allow-run --include dist/web --output dist/errand.exe src/main.ts
+deno task build
+deno compile --target x86_64-pc-windows-msvc --allow-net --allow-env --allow-read --allow-write --allow-run --output dist/errand.exe src/main.ts
 ```
 
 Before installing it as a service, check the host:

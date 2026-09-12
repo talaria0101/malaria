@@ -1696,7 +1696,7 @@ export class Session {
    * the budget covers the session's own output rather than the size of the
    * repository it was pointed at.
    */
-  private async startDiskWatch(): Promise<void> {
+  private startDiskWatch(): void {
     const budget = parseSize(this.options.config.sandbox.disk);
     if (budget === undefined || budget <= 0) return;
 
