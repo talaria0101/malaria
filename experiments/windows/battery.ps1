@@ -314,7 +314,7 @@ Record "11-limits-in-container" @{
 
 # ---- 7. exit codes ---------------------------------------------------------
 
-WriteLf "$mountRoot\hog.sh" "a=1`nwhile :; do a=`$((`$a+1)); done`n"
+WriteLf "$mountRoot\hog.sh" "a=x`nwhile :; do a=`$a`$a; done`n"
 $exit137 = PodmanOutput @("run", "--rm", "--memory", "6m", "-v", "${mountRoot}:/workspace", `
   "alpine:3", "sh", "/workspace/hog.sh") 180
 $exit42 = PodmanOutput @("run", "--rm", "alpine:3", "false") 120
@@ -331,7 +331,7 @@ Record "12-exit-codes-and-stdin" @{
 
 # ---- 8. kernel surface inside the machine -----------------------------------
 
-$kernel = Ssh "uname -r; sudo mount -t securityfs none /sys/kernel/security 2>&1; sudo ls /sys/kernel/security/ 2>&1; cat /sys/kernel/security/lsm 2>/dev/null; cat /sys/kernel/security/landlock/abi 2>&1; stat -fc %T /sys/fs/cgroup; cat /proc/sys/user/max_user_namespaces; ls /init 2>&1 | head -1; python3 -c 'import ctypes; print(chr(97)+chr(98)+chr(105)+chr(61), ctypes.CDLL(None).syscall(444, None, 0, 16))' 2>&1 | tail -1; ls /proc/sys/fs/binfmt_misc/ 2>/dev/null"
+$kernel = Ssh "uname -r; sudo mount -t securityfs none /sys/kernel/security 2>&1; sudo ls /sys/kernel/security/ 2>&1; cat /sys/kernel/security/lsm 2>/dev/null; cat /sys/kernel/security/landlock/abi 2>&1; stat -fc %T /sys/fs/cgroup; cat /proc/sys/user/max_user_namespaces; ls /init 2>&1 | head -1; python3 -c "import ctypes; k=ctypes.CDLL(None, use_errno=True); k.syscall.argtypes=[ctypes.c_long, ctypes.c_void_p, ctypes.c_size_t, ctypes.c_uint]; k.syscall.restype=ctypes.c_long; r=k.syscall(444, None, 0, 16); e=ctypes.get_errno(); print('abi-version', r, 'errno', e)" 2>&1 | tail -1; ls /proc/sys/fs/binfmt_misc/ 2>/dev/null"
 Record "13-machine-kernel" @{
   stdout = $kernel
 }
