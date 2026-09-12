@@ -1,6 +1,5 @@
 import { assertEquals } from "@std/assert";
 import { validateConfig } from "./validate.ts";
-import { DEFAULTS } from "./schema.ts";
 
 /**
  * The file somebody copies to start from.
@@ -18,7 +17,6 @@ Deno.test("the example configuration is one the daemon accepts", () => {
   assertEquals(config.agent.provider, "zai-coding-cn");
   assertEquals(config.agent.delegate?.model, "glm-5.3-flash");
   assertEquals((config.github?.userName ?? "").length > 0, true);
-  assertEquals(config.web?.port, DEFAULTS.web.port);
 });
 
 /** Every section the example shows should be one the daemon knows. */

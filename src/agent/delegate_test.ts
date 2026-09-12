@@ -115,12 +115,16 @@ Deno.test("a refused request does not spend the turn's allowance", async () => {
 
 Deno.test("nothing is asked while the provider is being backed off", async () => {
   const { turn, scheduler, sent } = delegations();
-  scheduler.noteRateLimit();
+  try {
+    scheduler.noteRateLimit();
 
-  const answer = await turn.run({ question: "q", path: "a.log" });
+    const answer = await turn.run({ question: "q", path: "a.log" });
 
-  assertEquals(isRefused(answer) ? answer.refused.includes("backed off") : false, true);
-  assertEquals(sent.length, 0);
+    assertEquals(isRefused(answer) ? answer.refused.includes("backed off") : false, true);
+    assertEquals(sent.length, 0);
+  } finally {
+    scheduler.shutdown();
+  }
 });
 
 Deno.test("no free slot means the work stays with the session's own model", async () => {

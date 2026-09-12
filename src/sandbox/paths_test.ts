@@ -1,5 +1,5 @@
 import { assertEquals } from "@std/assert";
-import { join, resolve, SEPARATOR } from "@std/path";
+import { join, resolve } from "@std/path";
 import { hostPathUnder, within } from "./paths.ts";
 
 const ROOT = "/projects/demo";

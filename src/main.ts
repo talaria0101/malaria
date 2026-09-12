@@ -37,7 +37,7 @@ async function threads(args: readonly string[]): Promise<number> {
 
   return await runThreads(args, {
     registry,
-    sizeOf: (stateDir) => treeBytes(stateDir),
+    sizeOf: async (stateDir) => treeBytes(stateDir),
     remove: (stateDir) => Deno.remove(stateDir, { recursive: true }),
     write: (line) => console.log(line),
     now: () => Date.now(),

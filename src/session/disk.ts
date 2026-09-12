@@ -17,37 +17,50 @@ import { join } from "@std/path";
  *
  * @returns the total, or undefined when the directory is not there.
  */
-export async function treeBytes(root: string): Promise<number | undefined> {
+/**
+ * Bytes held under a directory, following no symlink.
+ *
+ * Synchronous on purpose: this runs from a per-session timer, and an async
+ * walk outlives whatever started it, which in a test suite means an operation
+ * from one test completing inside another. A measurement may block briefly;
+ * it may not leak.
+ *
+ * @returns undefined when the directory is not there to measure.
+ */
+export function treeBytes(root: string): number | undefined {
   let total = 0;
   const pending = [root];
 
   try {
-    await Deno.lstat(root);
+    Deno.lstatSync(root);
   } catch {
     return undefined;
   }
 
   while (pending.length > 0) {
     const directory = pending.pop() as string;
+    let entries;
     try {
       // The whole walk of one directory is guarded, not only the call that
       // opens it. A session removing its own work while it is being measured
       // is ordinary, and it must not throw out of a measurement.
-      for await (const entry of Deno.readDir(directory)) {
-        const path = join(directory, entry.name);
-        if (entry.isDirectory) {
-          pending.push(path);
-          continue;
-        }
-        try {
-          total += (await Deno.lstat(path)).size;
-        } catch {
-          // Gone between listing and measuring, which a running session does.
-        }
-      }
+      entries = Deno.readDirSync(directory);
     } catch {
       // The directory went while it was being read. What was counted before
       // it went still counts.
+      continue;
+    }
+    for (const entry of entries) {
+      const path = join(directory, entry.name);
+      if (entry.isDirectory) {
+        pending.push(path);
+        continue;
+      }
+      try {
+        total += Deno.lstatSync(path).size;
+      } catch {
+        // Gone between listing and measuring, which a running session does.
+      }
     }
   }
   return total;

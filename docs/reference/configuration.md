@@ -117,17 +117,6 @@ How much of the agent's activity reaches the thread.
 | `maxAttachmentsPerMessage` | `number` | `4` | Most attached files taken from one message. The rest are refused. |
 | `postDiffs` | `boolean` | `true` | Post a diff after the agent changes a file. A diff shows intent rather than contents, which is both smaller and less likely to put something private in a channel than uploading whole files. |
 
-## web
-
-The local web interface. Absent means no listener at all, which is how the daemon behaves without one. There is no login: the address it binds to is the access control, and that address is checked rather than trusted.
-
-| field | type | default | what it does |
-| --- | --- | --- | --- |
-| `host` | `string` | `"127.0.0.1"` | Address to bind to. Must be loopback, private, or a tailnet address. |
-| `port` | `number` | `8787` |  |
-| `observer` | `boolean` | `false` | When true the interface may watch and read but not start, prompt, or control anything. |
-| `publicUrl` | `string or undefined` | none | Where the interface is reachable from outside, such as behind a tunnel. Used to link a session from somewhere that is not the chat service, so a pull request can name the conversation that asked for it. Absent when the interface is not published, in which case no such link is offered. |
-
 ## shutdown
 
 Who may power off the host from a chat message. Off unless the list has somebody in it. This is the one command that acts on the machine rather than on a session, so it is not covered by any session role: whoever starts a thread owns it, and owning a thread is no reason to be able to turn the computer off.

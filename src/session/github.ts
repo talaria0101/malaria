@@ -154,11 +154,6 @@ export function threadLink(guildId: string, threadId: string): string {
   return `https://discord.com/channels/${guildId}/${threadId}`;
 }
 
-/** Where the interface shows one session, when it is reachable from outside. */
-export function transcriptLink(publicUrl: string, sessionId: string): string {
-  return `${publicUrl.replace(/\/+$/, "")}/?session=${encodeURIComponent(sessionId)}`;
-}
-
 /**
  * What the agent is told about getting work reviewed.
  *

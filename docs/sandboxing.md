@@ -175,8 +175,6 @@ and a value reaches the agent, so nothing secret belongs here.
 ## What is not confined
 
 - **The daemon itself.** It holds the chat token and starts sandboxes.
-- **The web interface.** Anyone who can reach it acts with operator authority,
-  which is why the address it binds to is checked and a public bind refused.
 - **Disk use**, which is measured rather than enforced: no backend caps what a
   process tree writes in aggregate without a sized filesystem under it. A
   session that passes its budget is stopped, and the check paces itself against

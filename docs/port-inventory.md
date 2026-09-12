@@ -16,19 +16,19 @@ carried across.
 
 ## File by file
 
-| File | Lines | What and why |
-| --- | ---: | --- |
-| src/platform.ts | +92 | New. The OS fact (`Deno.build.os`), process liveness on Windows (tasklist, since Deno.kill with anything but termination is refused there and negative pids throw), and the tree kill (taskkill /T /F, since there are no signalable process groups). |
-| src/config/load.ts | 44 | Config search gains Windows spellings: %APPDATA% first, USERPROFILE honoured as home, ProgramData for the system path. Injected host flag keeps it testable on every platform. |
-| src/sandbox/podman.ts | 81 | Volumes drop `:Z` on Windows (the machine has no SELinux to relabel with); the capability report becomes a pure function and, on Windows, names the machine context and states the Hyper-V firewall gap instead of claiming the host is closed. |
-| src/sandbox/spawn.ts | 27 | setsid exists only where process groups do; on Windows the launcher starts directly and the tree kill replaces the group signal. |
-| src/sandbox/bailey.ts | 28 | The doctor parser now reads the Landlock ABI, and a networked session is refused below ABI 4, because the tool negotiates down instead of failing and WSL2 kernels below 6.7 would run sessions with egress policy silently skipped. |
-| src/main.ts | 30 | New `doctor` subcommand: the startup probe without needing a served channel, which matters most where the sandbox stack is new. |
-| src/lock.ts | 17 | Liveness probing delegates to the platform module instead of assuming a signal. |
-| src/provider/models.ts | 7 | Personal-home lookup honours USERPROFILE; an APPDATA candidate is added for the agent's own store. |
-| src/session/pr.ts | 2 | git's environment falls back to USERPROFILE for HOME. |
-| tests (5 files) | +195 | Windows spellings of the config search, the machine-context capability report, the ABI refusal, path translation across the POSIX-inside/Windows-outside boundary, and process-existence injection. |
-| docs + research + experiments | +~700 | docs/windows.md; three research notes with sources and dates; the CI battery and its Deno probes. |
+| File                          | Lines | What and why                                                                                                                                                                                                                                          |
+| ----------------------------- | ----: | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| src/platform.ts               |   +92 | New. The OS fact (`Deno.build.os`), process liveness on Windows (tasklist, since Deno.kill with anything but termination is refused there and negative pids throw), and the tree kill (taskkill /T /F, since there are no signalable process groups). |
+| src/config/load.ts            |    44 | Config search gains Windows spellings: %APPDATA% first, USERPROFILE honoured as home, ProgramData for the system path. Injected host flag keeps it testable on every platform.                                                                        |
+| src/sandbox/podman.ts         |    81 | Volumes drop `:Z` on Windows (the machine has no SELinux to relabel with); the capability report becomes a pure function and, on Windows, names the machine context and states the Hyper-V firewall gap instead of claiming the host is closed.       |
+| src/sandbox/spawn.ts          |    27 | setsid exists only where process groups do; on Windows the launcher starts directly and the tree kill replaces the group signal.                                                                                                                      |
+| src/sandbox/bailey.ts         |    28 | The doctor parser now reads the Landlock ABI, and a networked session is refused below ABI 4, because the tool negotiates down instead of failing and WSL2 kernels below 6.7 would run sessions with egress policy silently skipped.                  |
+| src/main.ts                   |    30 | New `doctor` subcommand: the startup probe without needing a served channel, which matters most where the sandbox stack is new.                                                                                                                       |
+| src/lock.ts                   |    17 | Liveness probing delegates to the platform module instead of assuming a signal.                                                                                                                                                                       |
+| src/provider/models.ts        |     7 | Personal-home lookup honours USERPROFILE; an APPDATA candidate is added for the agent's own store.                                                                                                                                                    |
+| src/session/pr.ts             |     2 | git's environment falls back to USERPROFILE for HOME.                                                                                                                                                                                                 |
+| tests (5 files)               |  +195 | Windows spellings of the config search, the machine-context capability report, the ABI refusal, path translation across the POSIX-inside/Windows-outside boundary, and process-existence injection.                                                   |
+| docs + research + experiments | +~700 | docs/windows.md; three research notes with sources and dates; the CI battery and its Deno probes.                                                                                                                                                     |
 
 ## What did not change, on purpose
 

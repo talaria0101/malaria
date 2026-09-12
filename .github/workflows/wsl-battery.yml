@@ -7,16 +7,19 @@ on:
 jobs:
   battery:
     runs-on: windows-latest
-    timeout-minutes: 60
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
 
       - name: podman machine and container battery
         shell: pwsh
+        continue-on-error: true
         run: ./experiments/windows/battery.ps1
 
       - name: deno runtime probes
         shell: pwsh
+        continue-on-error: true
+        if: always()
         run: |
           $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" +
                       [System.Environment]::GetEnvironmentVariable("Path", "User")
@@ -27,6 +30,7 @@ jobs:
       - name: shape B - podman inside a WSL distro
         shell: pwsh
         continue-on-error: true
+        if: always()
         run: ./experiments/windows/shape-b.ps1
 
       - uses: actions/upload-artifact@v4

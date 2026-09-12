@@ -75,19 +75,6 @@ and is told how to use it; `!status` reports what it cost and how much it kept
 out. To have the cheaper model do the work rather than describe it, use
 `!model` instead.
 
-## The interface
-
-An optional local web interface reads a session as it happens, browses the
-project, and starts new ones. It has no login: the address it binds to is the
-access control, and a public bind is refused rather than warned about. Build it
-once with `deno task build`, then add a `web` section to the configuration:
-
-```json
-{ "web": { "host": "127.0.0.1", "port": 8787 } }
-```
-
-Set `"observer": true` to serve one that can watch and read but change nothing.
-
 ## In a thread
 
 `!help` lists what can be typed, `!usage` says how much of the provider's usage
@@ -107,8 +94,8 @@ what to prepare and what its exit codes mean.
 
 ## Status
 
-Early, but complete enough to run: chat, sandboxed sessions, the interface, and
-service definitions for both init systems. Windows is supported through WSL2:
+Early, but complete enough to run: chat and sandboxed sessions, with service
+definitions for both init systems. Windows is supported through WSL2:
 the daemon runs natively, the sandbox runs in the podman machine, and what that
 changes is written up in [docs/windows.md](docs/windows.md) with the
 measurements behind it in [research](research) and [experiments](experiments).
@@ -116,23 +103,17 @@ measurements behind it in [research](research) and [experiments](experiments).
 ## Development
 
 ```sh
-deno task check     # formatting, lint, types, tests, the ASCII rule, the interface
+deno task check     # formatting, lint, types, tests, the ASCII rule
 deno task test      # the test suite
 deno task start     # run the daemon from the checkout
-deno task build     # the interface and a single binary, into dist/
+deno task build     # a single binary, into dist/
 deno task docs      # regenerate the reference pages from the code
-deno task dev:web   # the interface against a running daemon
-deno task dev:docs  # the documentation site
 ```
 
-`deno task build` produces `dist/errand`: one binary carrying the interface and
-its own runtime, with what it may do compiled in, so a host that runs it needs
-neither a checkout nor deno.
-
-The interface keeps its dependencies in `web/deno.json` rather than the root
-one. They are build tools, and sharing an import map put every one of them
-inside the daemon's binary: about a hundred megabytes of bundler that never
-runs at runtime.
+`deno task build` produces `dist/errand`: one binary carrying its own runtime,
+with what it may do compiled in, so a host that runs it needs neither a
+checkout nor deno. On Windows, cross-compile with `--target
+x86_64-pc-windows-msvc`; see [docs/windows.md](docs/windows.md).
 
 The daemon runs under an explicit permission set rather than with the whole
 machine available to it, which is visible in `deno task start`.

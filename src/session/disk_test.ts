@@ -9,7 +9,7 @@ Deno.test("everything under a directory is counted, at any depth", async () => {
   await Deno.writeTextFile(`${root}/deep/b.txt`, "y".repeat(50));
   await Deno.writeTextFile(`${root}/deep/deeper/c.txt`, "z".repeat(25));
 
-  assertEquals(await treeBytes(root), 175);
+  assertEquals(treeBytes(root), 175);
   await Deno.remove(root, { recursive: true });
 });
 
@@ -20,19 +20,19 @@ Deno.test("a symlink counts as the link, not as what it points at", async () => 
   await Deno.mkdir(`${root}/inside`);
   await Deno.symlink(`${root}/real.txt`, `${root}/inside/link.txt`);
 
-  const total = (await treeBytes(`${root}/inside`)) ?? 0;
+  const total = (treeBytes(`${root}/inside`)) ?? 0;
 
   assertEquals(total < 1000, true, "the link is not counted as its target");
   await Deno.remove(root, { recursive: true });
 });
 
 Deno.test("a directory that is not there is not zero", async () => {
-  assertEquals(await treeBytes("/no/such/place/at/all"), undefined);
+  assertEquals(treeBytes("/no/such/place/at/all"), undefined);
 });
 
 Deno.test("an empty directory holds nothing", async () => {
   const root = await Deno.makeTempDir({ prefix: "errand-disk-" });
-  assertEquals(await treeBytes(root), 0);
+  assertEquals(treeBytes(root), 0);
   await Deno.remove(root, { recursive: true });
 });
 

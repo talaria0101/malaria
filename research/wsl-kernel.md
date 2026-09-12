@@ -8,14 +8,14 @@ any confinement technique can do inside WSL regardless of distro.
 
 ## What is on
 
-| Setting | 5.15 | 6.1 | 6.6 | 6.18 | Why errand cares |
-| --- | --- | --- | --- | --- | --- |
-| CONFIG_SECURITY_LANDLOCK | y | y | y | y | bailey's filesystem policy |
-| CONFIG_LSM includes landlock | yes | yes | yes | yes | Landlock actually active, not just compiled |
-| CONFIG_USER_NS | y | y | y | y | bailey's isolation layer, rootless podman |
-| CONFIG_SECCOMP / SECCOMP_FILTER | y | y | y | y | bailey's syscall denylist |
-| CONFIG_MEMCG, CGROUP_SCHED | y | y | y | y | per-session memory and cpu limits |
-| CONFIG_BINFMT_MISC | y | y | y | y | the WSL interop handler lives here |
+| Setting                         | 5.15 | 6.1 | 6.6 | 6.18 | Why errand cares                            |
+| ------------------------------- | ---- | --- | --- | ---- | ------------------------------------------- |
+| CONFIG_SECURITY_LANDLOCK        | y    | y   | y   | y    | bailey's filesystem policy                  |
+| CONFIG_LSM includes landlock    | yes  | yes | yes | yes  | Landlock actually active, not just compiled |
+| CONFIG_USER_NS                  | y    | y   | y   | y    | bailey's isolation layer, rootless podman   |
+| CONFIG_SECCOMP / SECCOMP_FILTER | y    | y   | y   | y    | bailey's syscall denylist                   |
+| CONFIG_MEMCG, CGROUP_SCHED      | y    | y   | y   | y    | per-session memory and cpu limits           |
+| CONFIG_BINFMT_MISC              | y    | y   | y   | y    | the WSL interop handler lives here          |
 
 So Landlock is not the blocker I expected it to be: it has been in Microsoft's
 kernel since the 5.15 branch, and it is in the `lsm=` list, which is the part

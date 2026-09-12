@@ -9,7 +9,6 @@ import {
   REQUEST_FILENAME,
   reviewInstructions,
   threadLink,
-  transcriptLink,
 } from "./github.ts";
 
 const GITHUB: GithubConfig = {
@@ -82,10 +81,6 @@ Deno.test("a footer with nowhere to point at is still an attribution", () => {
 
 Deno.test("the links are the addresses a reader can open", () => {
   assertEquals(threadLink("111", "222"), "https://discord.com/channels/111/222");
-  assertEquals(
-    transcriptLink("https://errand.example/", "s 1"),
-    "https://errand.example/?session=s%201",
-  );
 });
 
 Deno.test("the instructions carry the exact footer for the agent to copy", () => {

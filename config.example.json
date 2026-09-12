@@ -44,11 +44,6 @@
   "shutdown": {
     "allowedUserIds": []
   },
-  "web": {
-    "host": "127.0.0.1",
-    "port": 8787,
-    "observer": false
-  },
   "limits": {
     "maxConcurrentTurns": 2,
     "maxLiveSessions": 4

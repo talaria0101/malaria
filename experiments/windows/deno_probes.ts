@@ -119,7 +119,7 @@ await probe("Deno.serve on 127.0.0.1", async () => {
   return `served ${body}`;
 });
 
-await probe("chmodSync then stat mode", async () => {
+await probe("chmodSync then stat mode", () => {
   const path = `${Deno.env.get("TEMP") ?? "."}/errand-chmod-probe.txt`;
   Deno.writeTextFileSync(path, "x");
   Deno.chmodSync(path, 0o600);

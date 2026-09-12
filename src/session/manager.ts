@@ -94,7 +94,6 @@ export interface ManagerOptions {
    */
   describeImages?: ((images: AgentImage[], question: string) => Promise<string>) | undefined;
   /** Where the interface is published, when it is. */
-  publicUrl?: string | undefined;
   /** Models this host knows the provider serves, for `!model`. */
   availableModels?: readonly string[] | undefined;
   /** Where a delegated question is sent, read from the host's model store. */
@@ -423,7 +422,6 @@ export class SessionManager {
       operatorIds: this.operatorIds,
       memory: this.options.memory,
       guildId: this.guildId,
-      publicUrl: this.options.publicUrl,
       availableModels: this.options.availableModels,
       delegateBaseUrl: this.options.delegateBaseUrl,
       unavailable: () => this.unavailable(),

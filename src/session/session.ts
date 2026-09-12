@@ -75,7 +75,6 @@ import {
   type SessionLinks,
   threadLink,
   TOKEN_VARIABLE,
-  transcriptLink,
 } from "./github.ts";
 import type { EndReason, ReactionOutcome, SessionUsage, ThreadPort } from "./port.ts";
 import type { Request as PullRequest } from "./pr.ts";
@@ -184,7 +183,6 @@ export interface SessionOptions {
   /** The guild the thread is in, which a thread link needs. */
   guildId?: string | undefined;
   /** Where the interface is published, when it is. */
-  publicUrl?: string | undefined;
   /**
    * Models this host knows this provider serves, for switching between them.
    *
@@ -1068,14 +1066,11 @@ export class Session {
 
   /** Where this session can be read back, for a pull request to point at. */
   private sessionLinks(): SessionLinks {
-    const { threadId, guildId, publicUrl } = this.options;
+    const { threadId, guildId } = this.options;
     return {
       ...(threadId === undefined || guildId === undefined
         ? {}
         : { thread: threadLink(guildId, threadId) }),
-      ...(publicUrl === undefined
-        ? {}
-        : { transcript: transcriptLink(publicUrl, this.options.id) }),
     };
   }
 
@@ -1705,7 +1700,7 @@ export class Session {
     const budget = parseSize(this.options.config.sandbox.disk);
     if (budget === undefined || budget <= 0) return;
 
-    this.diskBaseline = await this.measureDisk();
+    this.diskBaseline = this.measureDisk();
     if (this.ended) return;
     this.diskLastAt = Date.now();
     // The first interval is short on purpose: nothing has been observed yet,
@@ -1720,12 +1715,10 @@ export class Session {
     }, ms);
   }
 
-  private async measureDisk(): Promise<number> {
-    const [project, state] = await Promise.all([
-      treeBytes(this.options.project.path),
-      treeBytes(this.options.stateDir),
-    ]);
-    return (project ?? 0) + (state ?? 0);
+  private measureDisk(): number {
+    const project = treeBytes(this.options.project.path) ?? 0;
+    const state = treeBytes(this.options.stateDir) ?? 0;
+    return project + state;
   }
 
   /**
@@ -1740,7 +1733,7 @@ export class Session {
     if (this.ended) return;
 
     const budget = parseSize(this.options.config.sandbox.disk) ?? 0;
-    const written = Math.max(0, (await this.measureDisk()) - this.diskBaseline);
+    const written = Math.max(0, this.measureDisk() - this.diskBaseline);
     if (this.ended) return;
 
     const state = verdict(written, budget);

@@ -7,7 +7,7 @@
  * the isolation contract has been checked and reported.
  */
 
-import { dirname, fromFileUrl, join } from "@std/path";
+import { join } from "@std/path";
 import { ChannelType } from "discord.js";
 import { acknowledge, applicationId, registerCommands } from "./chat/commands.ts";
 import { Gateway } from "./chat/gateway.ts";
@@ -30,7 +30,6 @@ import {
   UNKNOWN_QUOTA,
 } from "./provider/zai.ts";
 import type { IncomingMessage } from "./session/session.ts";
-import { WEB_ACTOR, WebServer } from "./web/server.ts";
 
 /** Filename of the memory database inside the state directory. */
 export const MEMORY_FILENAME = "memory.db";
@@ -174,10 +173,6 @@ async function run(
     });
   }
 
-  // A request from the interface acts as an operator, which is the authority
-  // that reaching a private listener already implies. An observer gets none.
-  const webOperates = config.web !== undefined && !config.web.observer;
-
   daemon = new Daemon({
     config,
     sandbox,
@@ -185,10 +180,7 @@ async function run(
     log,
     memory,
     powerOff,
-    ...(config.web?.publicUrl === undefined ? {} : { publicUrl: config.web.publicUrl }),
-    operatorIds: webOperates
-      ? [...config.chat.operatorUserIds, WEB_ACTOR]
-      : config.chat.operatorUserIds,
+    operatorIds: config.chat.operatorUserIds,
     availableModels: models.map((model) => model.id),
     ...(delegateBaseUrl === undefined ? {} : { delegateBaseUrl }),
     ...(describer === undefined ? {} : { describeImages: describer.describe }),
@@ -235,32 +227,6 @@ async function run(
     }
   }
 
-  // Started after the daemon is accepting, so the interface never lists a
-  // session the daemon is not yet ready to act on.
-  let web: WebServer | null = null;
-  if (config.web !== undefined) {
-    web = new WebServer(
-      config.web,
-      daemon.sessions,
-      join(dirname(fromFileUrl(import.meta.url)), "..", "dist", "web"),
-      log,
-      guild?.id,
-      (id) => memory.displayName(id),
-    );
-    try {
-      web.start();
-      log.info("ACCESS: anyone who can reach the interface acts with operator authority");
-      log.info("  the agent's sandbox is unaffected by this; the interface is not sandboxed");
-      if (config.web.observer) {
-        log.info("  the interface is an observer and cannot change anything");
-      }
-    } catch (error) {
-      web = null;
-      log.error(String(error));
-      log.warn("continuing without the web interface");
-    }
-  }
-
   const signals: Deno.Signal[] = ["SIGINT", "SIGTERM"];
   const onSignal = (signal: Deno.Signal) => () => stop(signal);
   const listeners = signals.map((signal) => {
@@ -275,7 +241,6 @@ async function run(
 
   log.info("shutting down", { reason });
   for (const { signal, handler } of listeners) Deno.removeSignalListener(signal, handler);
-  await web?.stop();
   await daemon.shutdown();
   await gateway.close();
   releaseLock();

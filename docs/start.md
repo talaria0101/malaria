@@ -15,9 +15,8 @@ cd errand
 deno task build
 ```
 
-That produces `dist/errand`: one binary carrying the web interface and its own
-runtime, with what it may do compiled into it. A host that runs it needs neither
-a checkout nor deno.
+That produces `dist/errand`: one binary carrying its own runtime, with what it
+may do compiled into it. A host that runs it needs neither a checkout nor deno.
 
 ## Configure it
 

@@ -161,7 +161,6 @@ export interface DaemonOptions {
    */
   describeUsage?: (() => Promise<string>) | undefined;
   /** Where the interface is published, when it is. */
-  publicUrl?: string | undefined;
   /** Models this host knows the provider serves, for `!model`. */
   availableModels?: readonly string[] | undefined;
   /** Where a delegated question is sent, read from the host's model store. */
@@ -198,7 +197,6 @@ export class Daemon {
       registry: this.registry,
       log: options.log,
       memory: options.memory,
-      publicUrl: options.publicUrl,
       availableModels: options.availableModels,
       delegateBaseUrl: options.delegateBaseUrl,
       ...(options.operatorIds === undefined ? {} : { operatorIds: options.operatorIds }),
