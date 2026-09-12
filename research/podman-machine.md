@@ -48,12 +48,18 @@ mapping, so the flags do not and cannot close it. The same is true of
 `host.containers.internal`, the name podman machine resolves for guests.
 
 Whether the Windows host is reachable in practice therefore depends on what
-sits between the machine and Windows: the Hyper-V firewall for WSL, which on
-current Windows builds filters exactly this path. That is a host policy, not
-a container property, so the port reports it as a stated gap with the command
-to check and close it, rather than claiming either way. The battery measures
-which way a stock runner falls, both under the errand flags and under podman's
-default network.
+sits between the machine and Windows: the Hyper-V firewall for WSL, a host
+policy the daemon can neither read nor change. Measured on the battery's
+Windows Server 2025 runner (Hyper-V firewall reporting NotConfigured, which
+behaves as deny for this path): with the errand flags the machine hop closes,
+with podman's default pasta it stays mapped, and the Windows host is
+unreachable in both cases, while outbound internet and DNS keep working.
+The measured difference the flags make is visible in the artifact: the
+mapped address answers "connection refused" under the default network and
+times out under the restricted one, which is the mapping being removed
+rather than the path being filtered. The daemon still reports the Windows
+hop as a gap, because the firewall is the operator's to change; what the
+measurement adds is that a stock host starts closed.
 
 ## Volumes and the filesystem cost
 

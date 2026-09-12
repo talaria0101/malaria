@@ -34,11 +34,11 @@ The port needs from its runtime, on Windows:
   podman install to confirm.
 - Signals. lib.deno.ns.d.ts says plainly: on Windows only SIGINT, SIGBREAK,
   SIGTERM, SIGQUIT, SIGHUP, and SIGWINCH can have listeners. serve.ts
-  registers SIGINT and SIGTERM, both in the supported set. What has no
-  Windows meaning at all is the process group: lib.deno.ns.d.ts says
-  `Deno.kill` "will throw if a negative pid is used on Windows", so spawn.ts
-  cannot take a group down the way it does on Linux, and the probe measures
-  both calls.
+  registers SIGINT and SIGTERM, and the probes registered both for real on
+  a Windows runner. What has no Windows meaning at all is the process
+  group: `Deno.kill(pid, "SIGURG")` threw "Invalid signal" and a negative
+  pid threw "Invalid pid" when the probe ran them, which is why liveness
+  checking and tree killing needed Windows answers of their own.
 - Cross compilation: `deno compile --target x86_64-pc-windows-msvc` produces
   errand.exe on the Linux CI job, so a Windows host needs no toolchain, same
   as the Linux story with dist/errand.
