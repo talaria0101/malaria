@@ -169,6 +169,12 @@ Record "03-info-rootless" @{
 
 # ---- 3. candidate host addresses ------------------------------------------
 
+function WriteLf([string]$path, [string]$contents) {
+  # sh cannot run a script whose lines end with CR, and Set-Content writes
+  # CRLF on Windows, so the payloads go through .NET with explicit LF.
+  [IO.File]::WriteAllText($path, $contents.Replace("`r`n", "`n"))
+}
+
 $listener = Run "host listener" {
   Set-Content -Path "$env:TEMP\listener-root.txt" -Value "errand-probe-listener"
   $p = Start-Process -FilePath "python" `
@@ -256,8 +262,8 @@ foreach ($spelling in @("${mountRoot}:/workspace", "${mountRoot -replace '\\','/
 }
 Record "07-volume-spellings" @{ spellings = $volumeSpellings }
 
-Set-Content -Path "$mountRoot\script.sh" -Value "#!/bin/sh`necho executed-ok"
-Set-Content -Path "$mountRoot\probe.sh" -Value @'
+WriteLf "$mountRoot\script.sh" "#!/bin/sh`necho executed-ok"
+WriteLf "$mountRoot\probe.sh" @'
 id
 echo probe > /workspace/from-container.txt
 ls -l /workspace/script.sh
@@ -279,7 +285,7 @@ Record "09-z-label" @{
   stderr = if ($selinux.code -ne 0) { $selinux.stderr } else { "(accepted)" }
 }
 
-Set-Content -Path "$mountRoot\readonly.sh" -Value @'
+WriteLf "$mountRoot\readonly.sh" @'
 touch /root-readonly-test
 echo rootfs-code=$?
 touch /tmp/tmpfs-test && echo tmpfs-ok
@@ -293,7 +299,7 @@ Record "10-readonly-tmpfs" @{
 
 # ---- 6. limits -------------------------------------------------------------
 
-Set-Content -Path "$mountRoot\limits.sh" -Value @'
+WriteLf "$mountRoot\limits.sh" @'
 echo memory.max=$(cat /sys/fs/cgroup/memory.max)
 echo cpu.max=$(cat /sys/fs/cgroup/cpu.max)
 echo pids.max=$(cat /sys/fs/cgroup/pids.max)
@@ -308,9 +314,7 @@ Record "11-limits-in-container" @{
 
 # ---- 7. exit codes ---------------------------------------------------------
 
-Set-Content -Path "$mountRoot\sigkill.sh" -Value "kill -9 `$$`n"
-$exit137 = PodmanOutput @("run", "--rm", "-v", "${mountRoot}:/workspace", "alpine:3", `
-  "sh", "/workspace/sigkill.sh") 120
+$exit137 = PodmanOutput @("run", "--rm", "alpine:3", "sh", "-c", "kill -9 1") 120
 $exit42 = PodmanOutput @("run", "--rm", "alpine:3", "false") 120
 $stdin = Run "stdin piping" {
   # The RPC channel is exactly this: lines in on stdin, lines back on stdout.
@@ -325,14 +329,14 @@ Record "12-exit-codes-and-stdin" @{
 
 # ---- 8. kernel surface inside the machine -----------------------------------
 
-$kernel = Ssh "uname -r; sudo mount -t securityfs none /sys/kernel/security 2>&1; cat /sys/kernel/security/lsm 2>/dev/null; cat /sys/kernel/security/landlock/abi 2>/dev/null; stat -fc %T /sys/fs/cgroup; cat /proc/sys/user/max_user_namespaces; ls /init 2>&1 | head -1; ls /proc/sys/fs/binfmt_misc/ 2>/dev/null"
+$kernel = Ssh "uname -r; sudo mount -t securityfs none /sys/kernel/security 2>&1; sudo ls /sys/kernel/security/ 2>&1; cat /sys/kernel/security/lsm 2>/dev/null; cat /sys/kernel/security/landlock/abi 2>&1; stat -fc %T /sys/fs/cgroup; cat /proc/sys/user/max_user_namespaces; ls /init 2>&1 | head -1; ls /proc/sys/fs/binfmt_misc/ 2>/dev/null"
 Record "13-machine-kernel" @{
   stdout = $kernel
 }
 
 # ---- 9. the /init interop question ------------------------------------------
 
-Set-Content -Path "$mountRoot\interop.sh" -Value @'
+WriteLf "$mountRoot\interop.sh" @'
 echo MZ > /tmp/fake.exe
 chmod +x /tmp/fake.exe
 /tmp/fake.exe

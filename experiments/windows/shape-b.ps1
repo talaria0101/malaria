@@ -32,13 +32,8 @@ Record "b0-distro-install" @{ output = $install.Trim() }
 
 $setup = Wsl @("-d", "Ubuntu-24.04", "-u", "root", "--",
   "/bin/bash", "-lc",
-  "apt-get update -qq && apt-get install -y -qq podman >/dev/null 2>&1; apt-get install -y -qq uidmap >/dev/null 2>&1; podman --version")
+  "apt-get update -qq && apt-get install -y -qq podman uidmap >/dev/null 2>&1; useradd -m -s /bin/bash runner; usermod --add-subuids 100000-165535 --add-subgids 100000-165535 runner; podman --version; id runner")
 Record "b1-distro-podman" @{ output = $setup.Trim() }
-
-# Rootless pasta wants a ordinary user with subordinates; the distro's default
-# user has them on 24.04.
-$user = Wsl @("-d", "Ubuntu-24.04", "-u", "ubuntu", "--", "/bin/bash", "-lc", "id; cat /etc/subuid | head -1")
-Record "b1b-distro-user" @{ output = $user.Trim() }
 
 # ---- kernel surface (same kernel as the machine, read from a distro) --------
 
@@ -68,7 +63,7 @@ $restricted = "pasta:--map-host-loopback,none,--map-guest-addr,none"
 $targets = @($gateway, "169.254.1.2") | Where-Object { $_ }
 $entries = @()
 foreach ($target in ($targets | Select-Object -Unique)) {
-  $out = Wsl @("-d", "Ubuntu-24.04", "-u", "ubuntu", "--", "/bin/bash", "-lc",
+  $out = Wsl @("-d", "Ubuntu-24.04", "-u", "runner", "--", "/bin/bash", "-lc",
     "podman run --rm --network=$restricted alpine:3 wget -q -T 5 -O - http://${target}:8998/listener-root.txt; echo probe-exit=`$?")
   $entries += @{
     target = $target
@@ -76,9 +71,9 @@ foreach ($target in ($targets | Select-Object -Unique)) {
   }
 }
 
-$internet = Wsl @("-d", "Ubuntu-24.04", "-u", "ubuntu", "--", "/bin/bash", "-lc",
+$internet = Wsl @("-d", "Ubuntu-24.04", "-u", "runner", "--", "/bin/bash", "-lc",
   "podman run --rm --network=$restricted alpine:3 wget -q -T 10 -O - https://api.github.com/zen; echo probe-exit=`$?")
-$uid = Wsl @("-d", "Ubuntu-24.04", "-u", "ubuntu", "--", "/bin/bash", "-lc",
+$uid = Wsl @("-d", "Ubuntu-24.04", "-u", "runner", "--", "/bin/bash", "-lc",
   "podman run --rm --userns=keep-id alpine:3 id")
 
 Record "b4-shape-b-reachability" @{
