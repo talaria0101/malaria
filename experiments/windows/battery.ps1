@@ -10,6 +10,11 @@ $ErrorActionPreference = "Continue"
 $results = "experiments/results"
 New-Item -ItemType Directory -Force -Path $results | Out-Null
 $summary = New-Object System.Collections.Generic.List[string]
+Start-Transcript -Path "$results\transcript.log" -Append | Out-Null
+
+function Stamp([string]$message) {
+  Write-Host ("[{0}] {1}" -f (Get-Date -Format "HH:mm:ss"), $message)
+}
 
 function Record([string]$name, $data) {
   $json = $data | ConvertTo-Json -Depth 6
@@ -29,7 +34,8 @@ function Run([string]$label, [scriptblock]$block) {
   }
 }
 
-function PodmanOutput([string[]]$arguments, [int]$timeoutSeconds = 120) {
+function PodmanOutput([string[]]$arguments, [int]$timeoutSeconds = 180) {
+  Stamp ("podman " + ($arguments -join ' '))
   $task = Run "podman $($arguments -join ' ')" {
     $p = Start-Process -FilePath "podman" -ArgumentList $arguments `
       -NoNewWindow -Wait -PassThru `
@@ -61,13 +67,18 @@ if ($env0) { Record "00-environment" $env0 }
 $installed = Run "install podman" {
   $existing = Get-Command podman -ErrorAction SilentlyContinue
   if ($existing) { return "already present: $($existing.Source)" }
-  winget install --id RedHat.Podman --exact --silent `
-    --accept-source-agreements --accept-package-agreements | Out-Host
+  # choco first: winget has been observed to hang on Server SKUs.
+  choco install podman-cli -y --no-progress 2>&1 | Out-Host
   $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" +
               [System.Environment]::GetEnvironmentVariable("Path", "User")
   $found = Get-Command podman -ErrorAction SilentlyContinue
   if ($found) { return $found.Source }
-  foreach ($candidate in @("C:\Program Files\Podman\podman.exe", "$env:ProgramFiles\Podman\podman.exe")) {
+  foreach ($candidate in @(
+    "C:\Program Files\Podman\podman.exe",
+    "$env:ProgramFiles\Podman\podman.exe",
+    "C:\ProgramData\chocolatey\bin\podman.exe",
+    "C:\ProgramData\chocolatey\lib\podman-cli\tools\podman.exe"
+  )) {
     if (Test-Path $candidate) { return $candidate }
   }
   throw "podman not found after install"
@@ -80,10 +91,10 @@ Run "wsl default version" {
   wsl --set-default-version 2 2>&1 | Out-Host
 }
 
-$init = PodmanOutput @("machine", "init")
+$init = PodmanOutput @("machine", "init") 600
 Record "01-machine-init" @{ result = $init }
 
-$start = PodmanOutput @("machine", "start")
+$start = PodmanOutput @("machine", "start") 600
 Record "02-machine-start" @{ tail = if ($start.stderr) { $start.stderr.Substring(0, [Math]::Min(2000, $start.stderr.Length)) } else { $start.stdout } }
 
 $info = PodmanOutput @("info", "--format", "{{json .}}")
@@ -104,6 +115,23 @@ Record "03-info-rootless" @{
 # reach it: the WSL NAT gateway, the WSL vNIC, the runner's own address, and
 # the names podman promises to map.
 
+function Ssh([string]$command, [int]$timeoutSeconds = 120) {
+  Stamp ("podman machine ssh: " + $command)
+  $out = "$env:TEMP\ssh-out.txt"
+  $err = "$env:TEMP\ssh-err.txt"
+  Remove-Item $out, $err -ErrorAction SilentlyContinue
+  $p = Start-Process -FilePath "podman" -ArgumentList "machine", "ssh", $command `
+    -NoNewWindow -PassThru `
+    -RedirectStandardOutput $out `
+    -RedirectStandardError $err
+  if (-not $p.WaitForExit($timeoutSeconds * 1000)) {
+    try { $p.Kill() } catch {}
+    return "TIMED OUT after ${timeoutSeconds}s"
+  }
+  return ((Get-Content $out -Raw -ErrorAction SilentlyContinue) +
+          (Get-Content $err -Raw -ErrorAction SilentlyContinue))
+}
+
 $listener = Run "host listener" {
   Set-Content -Path "$env:TEMP\listener-root.txt" -Value "errand-probe-listener"
   $p = Start-Process -FilePath "python" `
@@ -120,8 +148,8 @@ $addresses = Run "candidate addresses" {
     ForEach-Object { "$($_.InterfaceAlias)=$($_.IPAddress)" }
   $primary = (Get-NetIPConfiguration | Where-Object { $_.IPv4DefaultGateway } |
     ForEach-Object { $_.IPv4Address.IPAddress })
-  $machineGateway = (podman machine ssh "ip route show default" 2>$null)
-  $machineAddresses = (podman machine ssh "ip -4 addr show eth0" 2>$null)
+  $machineGateway = (Ssh "ip route show default")
+  $machineAddresses = (Ssh "ip -4 addr show eth0")
   return @{
     wslAdapters = $wslAdapters
     primary = $primary
@@ -146,10 +174,9 @@ $restricted = "pasta:--map-host-loopback,none,--map-guest-addr,none"
 function ProbeFromContainer([string]$networkArgs, [string]$label) {
   $targets = @()
   if ($machineGatewayIp) { $targets += $machineGatewayIp }
-  $targets += @("169.254.1.2", "host.containers.internal", "10.255.255.245")
+  $targets += @("169.254.1.2", "host.containers.internal")
   $entries = @()
   foreach ($target in ($targets | Select-Object -Unique)) {
-    if ($target -eq "10.255.255.245") { continue }
     $out = PodmanOutput @("run", "--rm", $networkArgs, "alpine:3", `
       "wget", "-q", "-T", "5", "-O", "-", "http://${target}:8999/listener-root.txt")
     $entries += @{
@@ -238,7 +265,7 @@ Record "12-exit-codes" @{
 
 # ---- 8. kernel surface inside the machine -----------------------------------
 
-$kernel = PodmanOutput @("machine", "ssh", "uname -r; cat /sys/kernel/security/lsm 2>/dev/null; cat /sys/kernel/security/landlock/abi 2>/dev/null; stat -fc %T /sys/fs/cgroup; cat /proc/sys/user/max_user_namespaces; ls /init 2>&1 | head -1; ls /proc/sys/fs/binfmt_misc/ 2>/dev/null")
+$kernel = Ssh "uname -r; cat /sys/kernel/security/lsm 2>/dev/null; cat /sys/kernel/security/landlock/abi 2>/dev/null; stat -fc %T /sys/fs/cgroup; cat /proc/sys/user/max_user_namespaces; ls /init 2>&1 | head -1; ls /proc/sys/fs/binfmt_misc/ 2>/dev/null"
 Record "13-machine-kernel" @{
   stdout = $kernel.stdout
   stderr = $kernel.stderr
@@ -262,9 +289,9 @@ Record "14-interop-from-container" @{
 # ---- 10. DrvFS performance ---------------------------------------------------
 
 $perf = Run "drvfs performance" {
-  podman machine ssh "dd if=/dev/zero of=/tmp/ddtest bs=1M count=128 2>&1 | tail -1; rm /tmp/ddtest" | Out-Host
-  $ext4 = podman machine ssh "time dd if=/dev/zero of=/tmp/ddtest bs=1M count=128 2>&1 | tail -1"
-  podman machine ssh "rm -f /tmp/ddtest" | Out-Host
+  Ssh "dd if=/dev/zero of=/tmp/ddtest bs=1M count=128 2>&1 | tail -1; rm /tmp/ddtest" | Out-Host
+  $ext4 = Ssh "time dd if=/dev/zero of=/tmp/ddtest bs=1M count=128 2>&1 | tail -1"
+  Ssh "rm -f /tmp/ddtest" | Out-Host
   return @{
     ext4Write = $ext4
     drvfsNote = "write the same file through a container mount in 15-drvfs-write"
@@ -289,6 +316,7 @@ if ($listener) { Stop-Process -Id $listener -Force -ErrorAction SilentlyContinue
 Remove-Item -Recurse -Force $mountRoot -ErrorAction SilentlyContinue
 $stop = PodmanOutput @("machine", "stop")
 Write-Host "machine stop: $($stop.code)"
+Stop-Transcript | Out-Null
 
 $summary.Add("## environment notes") | Out-Null
 Set-Content -Path "$results\SUMMARY.md" -Value ($summary -join "`n`n")

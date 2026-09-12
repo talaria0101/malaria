@@ -34,12 +34,15 @@ export interface ModelInfo {
  */
 export function agentDirectories(env: Record<string, string | undefined>): string[] {
   const override = env.PI_CODING_AGENT_DIR?.trim();
-  const home = env.HOME?.trim() ?? "";
+  // The daemon runs wherever the operator runs it, and a personal home is
+  // spelled HOME on Linux and USERPROFILE on Windows.
+  const home = env.HOME?.trim() || env.USERPROFILE?.trim() || "";
   return [
     ...(override === undefined || override.length === 0 ? [] : [override]),
     join(home, ".pi", "agent"),
     join(env.XDG_CONFIG_HOME?.trim() || join(home, ".config"), "pi"),
-  ];
+    join(env.APPDATA?.trim() ?? "", "pi"),
+  ].filter((directory) => directory.trim().length > 0);
 }
 
 /** The first candidate directory that actually holds a model store. */

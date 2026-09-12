@@ -21,7 +21,9 @@ a checkout nor deno.
 
 ## Configure it
 
-Write `~/.config/errand/config.json`. The smallest file that starts:
+Write `~/.config/errand/config.json` (on Windows,
+`%APPDATA%\errand\config.json`; see [On Windows](/windows) for the full
+search order). The smallest file that starts:
 
 ```json
 {

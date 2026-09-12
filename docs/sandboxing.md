@@ -12,7 +12,9 @@ Sessions use the host's own tools, so there is no image to build or keep.
 
 **podman**, rootless, runs the session in a container from an image you provide.
 Use it when you would rather the session saw a filesystem you assembled than the
-host's.
+host's. On Windows this backend drives the podman client, whose containers run
+inside the podman machine (a WSL2 utility VM); what that changes about the
+enforcement story is written up in [On Windows](/windows).
 
 Both hold a session to one project directory and one state directory, and give
 it network access only to reach the model provider, over HTTPS. If a session

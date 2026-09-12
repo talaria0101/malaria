@@ -7,7 +7,7 @@
  * Run with `deno run -A experiments/windows/deno_probes.ts <outfile>`.
  */
 
-import { writeTextFile } from "node:fs/promises";
+import { writeFile } from "node:fs/promises";
 
 interface Probe {
   name: string;
@@ -16,7 +16,10 @@ interface Probe {
 
 const probes: Probe[] = [];
 
-async function probe(name: string, fn: () => Promise<string>): Promise<void> {
+async function probe(
+  name: string,
+  fn: () => string | Promise<string>,
+): Promise<void> {
   try {
     probes.push({ name, result: await fn() });
   } catch (error) {
@@ -32,11 +35,11 @@ function firstLine(text: string): string {
   return text.trim().split("\n")[0]?.slice(0, 120) ?? "";
 }
 
-await probe("deno.build.os", async () => Deno.build.os);
-await probe("deno.version", async () => Deno.version.deno);
-await probe("execPath", async () => Deno.execPath());
+await probe("deno.build.os", () => Deno.build.os);
+await probe("deno.version", () => Deno.version.deno);
+await probe("execPath", () => Deno.execPath());
 
-await probe("env: USERPROFILE/HOME/APPDATA", async () => {
+await probe("env: USERPROFILE/HOME/APPDATA", () => {
   const e = Deno.env.toObject();
   return JSON.stringify({
     USERPROFILE: e.USERPROFILE ? "set" : "unset",
@@ -68,7 +71,7 @@ await probe("child.kill('SIGTERM') on Windows", async () => {
   return `exited with ${status.code} after SIGTERM`;
 });
 
-await probe("Deno.kill(pid, 'SIGURG') on Windows", async () => {
+await probe("Deno.kill(pid, 'SIGURG') on Windows", () => {
   const c = new Deno.Command("ping", { args: ["-n", "30", "127.0.0.1"], stdout: "null" });
   const child = c.spawn();
   try {
@@ -81,7 +84,7 @@ await probe("Deno.kill(pid, 'SIGURG') on Windows", async () => {
   }
 });
 
-await probe("Deno.kill with negative pid on Windows", async () => {
+await probe("Deno.kill with negative pid on Windows", () => {
   const c = new Deno.Command("ping", { args: ["-n", "30", "127.0.0.1"], stdout: "null" });
   const child = c.spawn();
   try {
@@ -94,14 +97,14 @@ await probe("Deno.kill with negative pid on Windows", async () => {
   }
 });
 
-await probe("addSignalListener('SIGTERM')", async () => {
+await probe("addSignalListener('SIGTERM')", () => {
   const handler = () => {};
   Deno.addSignalListener("SIGTERM", handler);
   Deno.removeSignalListener("SIGTERM", handler);
   return "registered and removed";
 });
 
-await probe("addSignalListener('SIGINT')", async () => {
+await probe("addSignalListener('SIGINT')", () => {
   const handler = () => {};
   Deno.addSignalListener("SIGINT", handler);
   Deno.removeSignalListener("SIGINT", handler);
@@ -118,7 +121,7 @@ await probe("Deno.serve on 127.0.0.1", async () => {
 
 await probe("chmodSync then stat mode", async () => {
   const path = `${Deno.env.get("TEMP") ?? "."}/errand-chmod-probe.txt`;
-  await writeTextFile(path, "x");
+  Deno.writeTextFileSync(path, "x");
   Deno.chmodSync(path, 0o600);
   const info = Deno.statSync(path);
   Deno.removeSync(path);
@@ -147,9 +150,9 @@ await probe("realPathSync reports actual casing", async () => {
   }
 });
 
-await probe("writeTextFile newline handling", async () => {
+await probe("writeTextFile newline handling", () => {
   const path = `${Deno.env.get("TEMP") ?? "."}/errand-newline-probe`;
-  await writeTextFile(path, "a\nb\n");
+  Deno.writeTextFileSync(path, "a\nb\n");
   const bytes = Deno.readFileSync(path);
   Deno.removeSync(path);
   return `bytes: ${[...bytes].join(",")}`;
@@ -158,7 +161,7 @@ await probe("writeTextFile newline handling", async () => {
 await probe("path separators", async () => {
   // What the daemon's own path logic sees. The sandbox interior is POSIX
   // regardless, so every inside/outside translation crosses this boundary.
-  const { resolve, SEPARATOR } = await import("node:path");
+  const { resolve, SEPARATOR } = await import("@std/path");
   return JSON.stringify({
     sep: SEPARATOR,
     resolveOfWorkspace: resolve("C:\\proj", "/workspace/x"),
@@ -167,6 +170,6 @@ await probe("path separators", async () => {
 
 const outfile = Deno.args[0];
 if (outfile !== undefined) {
-  await writeTextFile(outfile, `${JSON.stringify(probes, null, 2)}\n`);
+  await writeFile(outfile, `${JSON.stringify(probes, null, 2)}\n`);
   console.log(`written to ${outfile}`);
 }

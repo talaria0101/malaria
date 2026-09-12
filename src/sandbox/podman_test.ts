@@ -4,6 +4,7 @@ import { parseSize } from "../config/size.ts";
 import { createLogger } from "../log.ts";
 import { type SandboxLaunch, SandboxUnavailableError, SYSTEM_LABEL } from "./backend.ts";
 import {
+  capabilityReport,
   FORBIDDEN_ARGS,
   podmanArgs,
   PodmanSandbox,
@@ -191,4 +192,55 @@ Deno.test("leftover containers are found by label and removed", async () => {
 
   const filter = calls.find((call) => call[0] === "ps")?.join(" ") ?? "";
   assertStringIncludes(filter, `label=${SYSTEM_LABEL}=true`);
+});
+
+/** The machine context changes the report, not the flags. */
+Deno.test("on Windows the report names the machine and states what it cannot verify", () => {
+  const report = capabilityReport(CONFIG, true);
+
+  assertStringIncludes(report.notes.join("\n"), "podman machine");
+  assertEquals(report.gaps.length, 1);
+  assertStringIncludes(report.gaps[0] ?? "", "Hyper-V firewall");
+});
+
+Deno.test("with no network at all the Windows host question does not arise", () => {
+  const report = capabilityReport({ ...CONFIG, network: "none" }, true);
+
+  assertEquals(report.gaps, []);
+});
+
+Deno.test("on Linux the report claims the host is closed, and says no more", () => {
+  const report = capabilityReport(CONFIG, false);
+
+  assertStringIncludes(report.notes.join("\n"), "host services are unreachable");
+  assertEquals(report.gaps, []);
+});
+
+Deno.test("a Windows session's volumes are mounted without a relabel", () => {
+  const args = podmanArgs(CONFIG, launch(), true);
+
+  const volumeValues = args.filter((arg) =>
+    arg.includes(":/") && (arg.endsWith(":rw") || arg.endsWith(":rw,Z"))
+  );
+  assertEquals(volumeValues.length, 2);
+  assertEquals(volumeValues.filter((value) => value.endsWith(":rw")).length, 2);
+});
+
+Deno.test("a Windows session still gets every isolation flag", () => {
+  const args = podmanArgs(CONFIG, launch(), true);
+
+  for (
+    const flag of [
+      "--userns=keep-id",
+      "--read-only",
+      "--cap-drop=ALL",
+      "no-new-privileges",
+    ]
+  ) {
+    assertEquals(args.includes(flag), true);
+  }
+  const text = args.join(" ");
+  assertStringIncludes(text, RESTRICTED_NETWORK);
+  assertStringIncludes(text, "--pids-limit");
+  assertStringIncludes(text, "fsize=");
 });

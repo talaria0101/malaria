@@ -11,6 +11,7 @@
  */
 
 import { join } from "@std/path";
+import { IS_WINDOWS } from "../platform.ts";
 import { type Config, ConfigError } from "./schema.ts";
 import { validateConfig } from "./validate.ts";
 
@@ -23,8 +24,23 @@ export const CONFIG_DIRECTORY = "errand";
 /** The filename, wherever it is found. */
 export const CONFIG_FILENAME = "config.json";
 
-/** Where a system service keeps it. */
-export const SYSTEM_CONFIG_PATH = `/etc/${CONFIG_DIRECTORY}/${CONFIG_FILENAME}`;
+/**
+ * Where a system service keeps it.
+ *
+ * The machine-wide configuration root, which is /etc on Linux and the
+ * ProgramData directory on Windows.
+ */
+export function systemConfigPath(
+  programData?: string,
+  hostWindows: boolean = IS_WINDOWS,
+): string {
+  if (!hostWindows) return `/etc/${CONFIG_DIRECTORY}/${CONFIG_FILENAME}`;
+  const root = programData ?? "C:\\ProgramData";
+  return join(root, CONFIG_DIRECTORY, CONFIG_FILENAME);
+}
+
+/** Kept for callers that want the constant shape; resolved on first use. */
+export const SYSTEM_CONFIG_PATH = systemConfigPath();
 
 /**
  * Every place the configuration is looked for, in order.
@@ -33,18 +49,34 @@ export const SYSTEM_CONFIG_PATH = `/etc/${CONFIG_DIRECTORY}/${CONFIG_FILENAME}`;
  * daemon by hand on a host that also serves one does not silently pick up the
  * service's token. The working directory is last: it is a convenience for a
  * checkout, not somewhere a daemon should be configured from by accident.
+ *
+ * On Windows the person's own root is the roaming application-data directory,
+ * because that is where Windows programs keep per-person configuration; a
+ * .config directory is still honoured, since toolchains people install on
+ * Windows often use one anyway.
+ *
+ * @param hostWindows injected; which host the search runs on.
  */
-export function configCandidates(env: Record<string, string | undefined>): string[] {
+export function configCandidates(
+  env: Record<string, string | undefined>,
+  hostWindows: boolean = IS_WINDOWS,
+): string[] {
   const named = env[CONFIG_VARIABLE]?.trim();
   if (named !== undefined && named.length > 0) return [named];
 
-  const home = env.HOME?.trim() ?? "";
+  const home = env.HOME?.trim() ?? env.USERPROFILE?.trim() ?? "";
   const xdg = env.XDG_CONFIG_HOME?.trim();
   const root = xdg !== undefined && xdg.length > 0 ? xdg : join(home, ".config");
 
-  return [
+  const own = [
     join(root, CONFIG_DIRECTORY, CONFIG_FILENAME),
-    SYSTEM_CONFIG_PATH,
+  ];
+  if (hostWindows && env.APPDATA?.trim()) {
+    own.unshift(join(env.APPDATA.trim(), CONFIG_DIRECTORY, CONFIG_FILENAME));
+  }
+  return [
+    ...own,
+    systemConfigPath(env.ProgramData, hostWindows),
     CONFIG_FILENAME,
   ];
 }

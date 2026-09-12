@@ -10,7 +10,7 @@
 import { runThreads } from "./cli/threads.ts";
 import { configPath, loadConfig } from "./config/load.ts";
 import { ConfigError } from "./config/schema.ts";
-import { EnforcementGapError } from "./daemon.ts";
+import { createSandbox, EnforcementGapError, probeSandbox } from "./daemon.ts";
 import { AlreadyRunningError } from "./lock.ts";
 import { createLogger } from "./log.ts";
 import { SandboxUnavailableError } from "./sandbox/backend.ts";
@@ -23,6 +23,7 @@ const USAGE = [
   "",
   "  run                  run the daemon until it is told to stop",
   "  threads [command]    manage remembered threads and their data",
+  "  doctor               report what the sandbox can enforce on this host",
   "  help                 this",
   "",
   `the configuration is read from ${configPath(Deno.env.toObject())}`,
@@ -83,6 +84,31 @@ async function run(): Promise<number> {
   }
 }
 
+/**
+ * Checks the sandbox backend and prints what it can enforce on this host.
+ *
+ * The daemon runs the same probe at startup, but reaching it means a valid
+ * configuration file with a token in it and a daemon that starts talking to
+ * the chat service. On a machine being set up, especially one where the
+ * sandbox runs through a podman machine or a WSL distro, most of that is
+ * beside the point: the operator wants to know what this host would enforce
+ * and what it refuses, before anything is served.
+ */
+async function doctor(): Promise<number> {
+  const log = createLogger({});
+  const config = loadConfig(configPath(Deno.env.toObject()));
+  try {
+    await probeSandbox(createSandbox(config, log), config, log);
+    return 0;
+  } catch (error) {
+    if (error instanceof SandboxUnavailableError || error instanceof EnforcementGapError) {
+      log.error(error.message);
+      return 2;
+    }
+    throw error;
+  }
+}
+
 async function main(args: readonly string[]): Promise<number> {
   const [command, ...rest] = args;
 
@@ -92,6 +118,8 @@ async function main(args: readonly string[]): Promise<number> {
         return await run();
       case "threads":
         return await threads(rest);
+      case "doctor":
+        return await doctor();
       case "help":
       case "--help":
       case undefined:

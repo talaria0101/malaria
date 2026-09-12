@@ -326,7 +326,7 @@ export const runCommand: Run = async function runCommand(
     clearEnv: true,
     env: {
       PATH: Deno.env.get("PATH") ?? "",
-      HOME: Deno.env.get("HOME") ?? "",
+      HOME: Deno.env.get("HOME") ?? Deno.env.get("USERPROFILE") ?? "",
       ...options.env,
     },
   }).output();

@@ -1,23 +1,26 @@
 /**
  * Starting a confined launcher and wiring up its pipes.
  *
- * The launcher leads its own process group, so ending a session ends
- * everything the agent started rather than only the launcher, leaving its
- * children behind holding the project open.
+ * The launcher leads its own process group where the host has process
+ * groups, so ending a session ends everything the agent started rather than
+ * only the launcher, leaving its children behind holding the project open.
+ * Windows has no groups the runtime can signal, so there the same guarantee
+ * is bought with a tree kill instead.
  */
 
 import type { AgentProcess } from "../agent/client.ts";
+import { IS_WINDOWS, treeKill } from "../platform.ts";
 
 /** A launcher that has been started. */
 export interface SpawnedAgent {
   process: AgentProcess;
-  /** Terminates the whole process group. Safe to call more than once. */
+  /** Terminates the whole process tree. Safe to call more than once. */
   kill(signal?: Deno.Signal): void;
   /** The launcher's process id, which is also its process group id. */
   pid: number;
 }
 
-/** Spawns a launcher in its own process group and wires up its pipes. */
+/** Spawns a launcher and wires up its pipes. */
 export function spawnAgent(
   command: string,
   args: readonly string[],
@@ -25,9 +28,10 @@ export function spawnAgent(
   cwd?: string,
 ): SpawnedAgent {
   // Through setsid, so the launcher leads a group and one signal reaches
-  // everything it started.
-  const child = new Deno.Command("setsid", {
-    args: [command, ...args],
+  // everything it started. Windows has neither setsid nor groups to join,
+  // so the launcher is started directly there.
+  const child = new Deno.Command(IS_WINDOWS ? command : "setsid", {
+    args: [...args],
     stdin: "piped",
     stdout: "piped",
     stderr: "piped",
@@ -56,6 +60,13 @@ export function spawnAgent(
     pid: child.pid,
     kill(signal: Deno.Signal = "SIGKILL"): void {
       killed = true;
+      if (IS_WINDOWS) {
+        // The tree form is the point: the sandbox tree is whatever the
+        // launcher started, and nothing else on the machine gets to survive
+        // into the next session.
+        treeKill(child.pid);
+        return;
+      }
       try {
         // The negative pid is the group, which is the point of setsid.
         Deno.kill(-child.pid, signal);

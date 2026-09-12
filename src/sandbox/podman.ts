@@ -5,9 +5,17 @@
  * measured against a real container, and the network options in particular are
  * the difference between a container that can reach host services and one that
  * cannot.
+ *
+ * On Windows this backend drives podman.exe, which is a client for a podman
+ * machine: a WSL2 utility VM where the containers actually run. Every flag
+ * here is interpreted inside that machine by the podman and pasta that live
+ * there. The isolated-network flags close the machine hop, which is the only
+ * hop the flags can see; what stands between the machine and Windows is the
+ * Hyper-V firewall, which the probe reports on rather than assumes about.
  */
 
 import { parseSize } from "../config/size.ts";
+import { IS_WINDOWS } from "../platform.ts";
 import type { SandboxConfig } from "../config/schema.ts";
 import type { Logger } from "../log.ts";
 import {
@@ -78,9 +86,14 @@ const runPodman: Run = async (args) => {
  *
  * Pure, so a test can assert the exact flags without starting a container.
  */
-export function podmanArgs(config: SandboxConfig, launch: SandboxLaunch): string[] {
+export function podmanArgs(
+  config: SandboxConfig,
+  launch: SandboxLaunch,
+  hostWindows: boolean = IS_WINDOWS,
+): string[] {
   const name = sandboxName(launch.sessionId);
   const network = config.network === "none" ? "none" : RESTRICTED_NETWORK;
+  const suffix = hostWindows ? "rw" : "rw,Z";
 
   const args = [
     "run",
@@ -97,9 +110,9 @@ export function podmanArgs(config: SandboxConfig, launch: SandboxLaunch): string
     "--tmpfs",
     "/tmp",
     "--volume",
-    `${launch.projectPath}:${WORKSPACE_PATH}:rw,Z`,
+    `${launch.projectPath}:${WORKSPACE_PATH}:${suffix}`,
     "--volume",
-    `${launch.stateDir}:${STATE_PATH}:rw,Z`,
+    `${launch.stateDir}:${STATE_PATH}:${suffix}`,
     "--workdir",
     WORKSPACE_PATH,
     "--cap-drop=ALL",
@@ -145,6 +158,53 @@ export function podmanArgs(config: SandboxConfig, launch: SandboxLaunch): string
   return args;
 }
 
+/**
+ * What the backend can and cannot enforce on the named host.
+ *
+ * Pure, so a test can assert the report without a podman to ask. The
+ * machine-context entries exist because the daemon on Windows drives a
+ * client whose containers live in a WSL2 utility VM: the isolated-network
+ * flags close the machine hop, which is the only hop pasta can see, and what
+ * stands between the machine and Windows is the Hyper-V firewall, a host
+ * policy this daemon can neither read nor change. Saying nothing there would
+ * let the report claim more than is enforced.
+ *
+ * @param hostWindows injected; which host the report describes.
+ */
+export function capabilityReport(
+  config: SandboxConfig,
+  hostWindows: boolean = IS_WINDOWS,
+): CapabilityReport {
+  const notes = [
+    `sessions run in rootless containers from ${config.image}`,
+    config.network === "none"
+      ? "sessions have no network, so the agent cannot reach a model provider"
+      : hostWindows
+      ? "sessions reach the model provider, and the podman machine itself is unreachable from them"
+      : "sessions reach the model provider, and host services are unreachable",
+    `limits per session: memory ${config.memory}, cpus ${config.cpus}, pids ${config.pids}`,
+    `no single file may exceed ${config.fileMax}, set as an fsize ulimit on the container`,
+    // A note rather than a gap: the daemon never claims to enforce a disk
+    // total, so calling it an unenforceable guarantee would make
+    // requireFullEnforcement refuse to start on every host forever.
+    `a session is stopped once it has written ${config.disk}, which is measured rather than enforced`,
+  ];
+
+  const gaps: string[] = [];
+  if (hostWindows) {
+    notes.push(
+      "the daemon runs on Windows, so containers run inside the podman machine, a WSL2 utility VM, and the Windows client relays them",
+    );
+    if (config.network !== "none") {
+      gaps.push(
+        "whether the Windows host itself is unreachable cannot be verified from here: the container-level network is closed, but the podman machine reaches Windows through the WSL NAT and the Hyper-V firewall decides what crosses it. Check `Set-NetFirewallHyperVVMSetting` on the host, and treat a permissive inbound policy as an open path to host services",
+      );
+    }
+  }
+
+  return { backend: "podman", gaps, notes };
+}
+
 /** Rootless podman, one container per session. */
 export class PodmanSandbox implements Sandbox {
   readonly name = "podman" as const;
@@ -178,20 +238,7 @@ export class PodmanSandbox implements Sandbox {
 
     if (reasons.length > 0) throw new SandboxUnavailableError("podman", reasons);
 
-    const notes = [
-      `sessions run in rootless containers from ${this.config.image}`,
-      this.config.network === "none"
-        ? "sessions have no network, so the agent cannot reach a model provider"
-        : "sessions reach the model provider, and host services are unreachable",
-      `limits per session: memory ${this.config.memory}, cpus ${this.config.cpus}, pids ${this.config.pids}`,
-      `no single file may exceed ${this.config.fileMax}, set as an fsize ulimit on the container`,
-      // A note rather than a gap: the daemon never claims to enforce a disk
-      // total, so calling it an unenforceable guarantee would make
-      // requireFullEnforcement refuse to start on every host forever.
-      `a session is stopped once it has written ${this.config.disk}, which is measured rather than enforced`,
-    ];
-
-    return { backend: "podman", gaps: [], notes };
+    return capabilityReport(this.config);
   }
 
   launch(launch: SandboxLaunch): Promise<SandboxHandle> {

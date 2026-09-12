@@ -48,3 +48,34 @@ Deno.test("a path that climbs out of the project has no host path", () => {
   assertEquals(hostPathUnder("/workspace", ROOT, "../secrets"), undefined);
   assertEquals(hostPathUnder("/workspace", ROOT, "   "), undefined);
 });
+
+/**
+ * The sandbox interior is POSIX whatever the daemon runs on, so on Windows
+ * the translation crosses from an agent path under /workspace to a path with
+ * a drive letter and backslashes. Asserted per host, since resolve() is the
+ * host's own idea of a path.
+ */
+Deno.test("an agent path under the workspace lands in a Windows project", () => {
+  if (Deno.build.os !== "windows") return;
+
+  const host = hostPathUnder("/workspace", "C:\\errand\\projects\\demo", "/workspace/src/main.ts");
+  assertEquals(host, "C:\\errand\\projects\\demo\\src\\main.ts");
+});
+
+Deno.test("a Windows translation still refuses traversal", () => {
+  if (Deno.build.os !== "windows") return;
+
+  const host = hostPathUnder(
+    "/workspace",
+    "C:\\errand\\projects\\demo",
+    "/workspace/../../secrets",
+  );
+  assertEquals(host, undefined);
+});
+
+Deno.test("an absolute path outside the workspace is read as project-relative, on Windows too", () => {
+  if (Deno.build.os !== "windows") return;
+
+  const host = hostPathUnder("/workspace", "C:\\errand\\projects\\demo", "/etc/passwd");
+  assertEquals(host, "C:\\errand\\projects\\demo\\etc\\passwd");
+});

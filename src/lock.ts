@@ -12,6 +12,7 @@
  */
 
 import { join } from "@std/path";
+import { processExists } from "./platform.ts";
 
 /** Filename of the lock inside the daemon state directory. */
 export const LOCK_FILENAME = "daemon.lock";
@@ -33,19 +34,13 @@ export class AlreadyRunningError extends Error {
 /**
  * Whether a process with this id exists.
  *
- * Probed with SIGURG, whose default disposition is to be ignored, so the
- * target is not disturbed by being asked about. Being refused permission
- * counts as running: the process is there, it just belongs to somebody else,
- * and that is not evidence that the lock is stale.
+ * Probed without disturbing the target: the answer is delegated to the
+ * platform module, which uses a signal the target ignores on Linux and the
+ * system's own process listing on Windows. Being refused permission counts
+ * as running on both, since the process is there and merely not ours.
  */
 export function isRunning(pid: number): boolean {
-  if (!Number.isInteger(pid) || pid <= 0) return false;
-  try {
-    Deno.kill(pid, "SIGURG");
-    return true;
-  } catch (error) {
-    return error instanceof Deno.errors.PermissionDenied;
-  }
+  return processExists(pid);
 }
 
 /** A held lock, released on shutdown. */

@@ -231,3 +231,42 @@ Deno.test("variables set by configuration are named in what the backend reports"
   assertEquals(said.includes("/var/cache/cargo"), false);
   await Deno.remove(root, { recursive: true });
 });
+
+Deno.test("the doctor's Landlock ABI is read, whatever its capitalisation", () => {
+  const upstream = parseDoctor("kernel:\n  landlock: ABI 7\n  user namespaces: yes");
+  assertEquals(upstream.landlockAbi, 7);
+
+  const fixture = parseDoctor("landlock: yes (abi 5)");
+  assertEquals(fixture.landlockAbi, 5);
+
+  const absent = parseDoctor("landlock: yes");
+  assertEquals(absent.landlockAbi, undefined);
+});
+
+Deno.test("a kernel that cannot enforce network rules refuses a networked session", async () => {
+  // This is the WSL2 case: Microsoft's kernel has had Landlock since 5.15
+  // but ABI 4 only since 6.7, and the tool negotiates down instead of
+  // failing, so the daemon must do the refusing.
+  const { run } = fakeRun({
+    doctor: { stdout: "landlock: yes (abi 2)\nuser namespaces: yes\ncgroup delegation: yes" },
+  });
+  const sandbox = new BaileySandbox(CONFIG, createLogger({}, () => {}), "/state", run);
+
+  const error = await assertRejects(() => sandbox.probe(), SandboxUnavailableError);
+  assertStringIncludes(String(error), "ABI 4");
+});
+
+Deno.test("a kernel that cannot enforce network rules may still run offline sessions", async () => {
+  const { run } = fakeRun({
+    doctor: { stdout: "landlock: yes (abi 2)\nuser namespaces: yes\ncgroup delegation: yes" },
+  });
+  const sandbox = new BaileySandbox(
+    { ...CONFIG, network: "none" },
+    createLogger({}, () => {}),
+    "/state",
+    run,
+  );
+
+  const report = await sandbox.probe();
+  assertEquals(report.gaps, []);
+});

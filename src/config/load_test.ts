@@ -1,5 +1,6 @@
-import { assertEquals, assertStringIncludes, assertThrows } from "@std/assert";
+import { assert, assertEquals, assertStringIncludes, assertThrows } from "@std/assert";
 import { configCandidates, configPath, loadConfig } from "./load.ts";
+import { join } from "@std/path";
 import { ConfigError } from "./schema.ts";
 
 const VALID = JSON.stringify({
@@ -85,4 +86,34 @@ Deno.test("a file that is not JSON is not reported as a field problem", () => {
 Deno.test("a file that parses but says something impossible lists every reason", () => {
   const error = assertThrows(() => loadConfig("/c.json", () => "{}"), ConfigError) as ConfigError;
   assertEquals(error.problems.length > 3, true);
+});
+
+/** Windows keeps per-person configuration under the roaming profile. */
+Deno.test("on Windows the application-data directory comes first", () => {
+  const looked = configCandidates(
+    {
+      HOME: "/c/h",
+      USERPROFILE: "C:\\Users\\amelia",
+      APPDATA: "C:\\Users\\amelia\\AppData\\Roaming",
+    },
+    true,
+  );
+
+  // The separators in a joined path are the host's, so this asserts order
+  // and the directories chosen rather than the exact spelling.
+  assertEquals(looked.length, 4);
+  assert(looked[0]?.includes("AppData\\Roaming"), looked[0]);
+  assert(looked[0]?.endsWith(join("errand", "config.json")), looked[0]);
+  assert(looked[1]?.includes(".config"), looked[1]);
+});
+
+Deno.test("on Windows the machine-wide root is ProgramData", () => {
+  const looked = configCandidates({ APPDATA: "C:\\Users\\amelia\\AppData\\Roaming" }, true);
+
+  assert(looked[2]?.includes("ProgramData"), looked[2]);
+  assert(!looked[2]?.includes("Roaming"), looked[2]);
+});
+
+Deno.test("a named file still wins on Windows", () => {
+  assertEquals(configCandidates({ ERRAND_CONFIG: "D:\\cfg.json" }, true), ["D:\\cfg.json"]);
 });

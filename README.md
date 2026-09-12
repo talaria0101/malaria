@@ -108,7 +108,10 @@ what to prepare and what its exit codes mean.
 ## Status
 
 Early, but complete enough to run: chat, sandboxed sessions, the interface, and
-service definitions for both init systems.
+service definitions for both init systems. Windows is supported through WSL2:
+the daemon runs natively, the sandbox runs in the podman machine, and what that
+changes is written up in [docs/windows.md](docs/windows.md) with the
+measurements behind it in [research](research) and [experiments](experiments).
 
 ## Development
 

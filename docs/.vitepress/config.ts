@@ -33,6 +33,7 @@ export default defineConfig({
         items: [
           { text: "Sandboxing", link: "/sandboxing" },
           { text: "As a service", link: "/service" },
+          { text: "On Windows", link: "/windows" },
           { text: "The interface", link: "/interface" },
         ],
       },

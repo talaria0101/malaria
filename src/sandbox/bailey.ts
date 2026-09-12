@@ -96,8 +96,19 @@ export function sessionEnvironment(
  *
  * Parsed rather than hardcoded, so this does not drift from what the tool
  * actually does.
+ *
+ * The Landlock ABI is read as well as the presence of Landlock, because the
+ * tool negotiates down instead of failing: on a kernel older than 6.7 it
+ * applies the filesystem policy and silently skips the network rules, and a
+ * daemon configured to allow egress must treat that as a gap rather than as
+ * enforcement. WSL2 is the common home of this case, since Microsoft's kernel
+ * had Landlock long before it had ABI 4.
  */
-export function parseDoctor(doctor: string): { gaps: string[]; unavailable: string[] } {
+export function parseDoctor(doctor: string): {
+  gaps: string[];
+  unavailable: string[];
+  landlockAbi: number | undefined;
+} {
   const gaps: string[] = [];
   const unavailable: string[] = [];
   const lines = doctor.split("\n").map((line) => line.trim());
@@ -106,6 +117,11 @@ export function parseDoctor(doctor: string): { gaps: string[]; unavailable: stri
   if (landlock === undefined || landlock.includes("no")) {
     unavailable.push("the kernel does not provide Landlock, which this backend requires");
   }
+
+  const abi = landlock?.match(/abi\s*(\d+)/i);
+  const abiVersion = abi === null || abi === undefined
+    ? undefined
+    : Number.parseInt(abi[1] ?? "", 10);
 
   const userns = lines.find((line) => line.startsWith("user namespaces:"));
   if (userns?.endsWith("no") === true) {
@@ -119,7 +135,7 @@ export function parseDoctor(doctor: string): { gaps: string[]; unavailable: stri
     );
   }
 
-  return { gaps, unavailable };
+  return { gaps, unavailable, landlockAbi: abiVersion };
 }
 
 /** The arguments the tool is run with for one session. */
@@ -174,8 +190,14 @@ export class BaileySandbox implements Sandbox {
       ]);
     }
 
-    const { gaps, unavailable } = parseDoctor(`${doctor.stdout}\n${doctor.stderr}`);
+    const { gaps, unavailable, landlockAbi } = parseDoctor(`${doctor.stdout}\n${doctor.stderr}`);
     if (unavailable.length > 0) throw new SandboxUnavailableError("bailey", unavailable);
+
+    if (this.config.network !== "none" && landlockAbi !== undefined && landlockAbi < 4) {
+      throw new SandboxUnavailableError("bailey", [
+        `the kernel reports Landlock ABI ${landlockAbi}, which does not enforce network rules; they need ABI 4 (Linux 6.7). Set sandbox.network to "none" for a session that must not reach anything, or run on a newer kernel`,
+      ]);
+    }
 
     // Without this, a version too old for the generated policy surfaces as
     // every session failing to launch rather than once at startup, where it is
