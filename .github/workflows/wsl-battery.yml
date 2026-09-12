@@ -1,0 +1,36 @@
+name: wsl-battery
+
+on:
+  workflow_dispatch:
+  workflow_call:
+
+jobs:
+  battery:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: podman machine and container battery
+        shell: pwsh
+        run: ./experiments/windows/battery.ps1
+
+      - name: deno runtime probes
+        shell: pwsh
+        run: |
+          $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" +
+                      [System.Environment]::GetEnvironmentVariable("Path", "User")
+          irm https://deno.land/install.ps1 | iex
+          $env:Path += ";$env:USERPROFILE\.deno\bin"
+          deno run -A experiments/windows/deno_probes.ts experiments/results/deno-probes.json
+
+      - name: shape B - podman inside a WSL distro
+        shell: pwsh
+        continue-on-error: true
+        run: ./experiments/windows/shape-b.ps1
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: wsl-battery-results
+          path: experiments/results/

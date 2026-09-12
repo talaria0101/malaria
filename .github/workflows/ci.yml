@@ -1,0 +1,34 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.5.x
+      - name: check
+        run: deno task check
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.5.x
+      - name: test
+        run: deno task test
+      - name: compile a windows binary
+        run: deno task build:web && deno compile --target x86_64-pc-windows-msvc --allow-net --allow-env --allow-read --allow-write --allow-run --include dist/web --output dist/errand.exe src/main.ts
+      - uses: actions/upload-artifact@v4
+        with:
+          name: errand-windows
+          path: dist/errand.exe

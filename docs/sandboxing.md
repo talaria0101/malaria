@@ -1,0 +1,192 @@
+# Sandboxing
+
+Every session runs confined. There is no unsandboxed mode and no flag that
+turns it off, because the agent is the untrusted party: it runs commands written
+by a model against instructions written by whoever can post in a channel.
+
+## What confines it
+
+**bailey** confines a session as a host process, using Landlock for the
+filesystem, seccomp for the syscall surface, and user, PID, and UTS namespaces.
+Sessions use the host's own tools, so there is no image to build or keep.
+
+**podman**, rootless, runs the session in a container from an image you provide.
+Use it when you would rather the session saw a filesystem you assembled than the
+host's.
+
+Both hold a session to one project directory and one state directory, and give
+it network access only to reach the model provider, over HTTPS. If a session
+needs another outbound port, name it under `sandbox.egressPorts`:
+
+```json
+{
+  "sandbox": {
+    "network": "restricted",
+    "egressPorts": [80, 443]
+  }
+}
+```
+
+The default is `[443]`, which is all a provider needs. Adding 80 lets a session
+speak plaintext HTTP, for a mirror or a redirect that has not moved to TLS. The
+bailey backend enforces this in the generated policy; podman bounds the network
+by namespace rather than by port, so the list is inert there. A session with
+`network` set to `none` opens nothing, whatever ports are named.
+
+Under the bailey backend a session shares the host's network namespace, so it
+can read the host address, the MAC, and the ARP neighbours through `ip`,
+`/proc/net`, or `/sys`. To hide them, set `sandbox.hideHostAddress`:
+
+```json
+{
+  "sandbox": {
+    "hideHostAddress": true
+  }
+}
+```
+
+Egress then runs through a private namespace, so a session sees a synthetic
+address and MAC rather than the host's. It needs `pasta` on the host; without
+it the session still starts, and says the host address stays visible. The
+namespace gets a synthetic IPv6 address as well where the host has one to reach,
+and the ports a session may open are unchanged. The podman backend already gives
+each session its own network, so it does not need this.
+
+## What it says at startup
+
+The daemon probes the backend before it touches the chat service, and reports
+what it can and cannot enforce **on this host**:
+
+```
+sandbox backend: bailey
+  sessions run as confined host processes using the host's own tools
+  no single file may exceed 1g, enforced as an rlimit
+  1 guarantee(s) cannot be enforced on this host:
+    - per-session memory, cpu, and process limits are not applied: this host
+      reports no cgroup delegation
+```
+
+A gap is always stated. Presenting a weaker boundary as if it were a stronger
+one is worse than the weaker boundary itself, because it takes away the chance
+to decide about it.
+
+By default a gap **stops the daemon**. Set `sandbox.requireFullEnforcement` to
+`false` to run anyway, having read what is missing.
+
+## Per-session limits
+
+The memory, cpu, and process limits are applied per session only when the
+sandbox has a cgroup it may create children in, named by `BAILEY_CGROUP_ROOT`.
+Without one, the limits in your service definition still hold, but they hold
+over the daemon and every session together, and the daemon reports that as the
+gap above.
+
+The [service definitions](/service) show how to provide one.
+
+## Granting more than the default
+
+The policy is generated per session and written to `<stateDir>/<session>/policy.toml`,
+outside the project so the agent cannot rewrite it. You can read it to see
+exactly what a session was given.
+
+To let sessions reach something else, name it:
+
+```json
+{
+  "sandbox": {
+    "policyExtra": {
+      "read": ["/opt/toolchains", "/var/cache/shared"],
+      "execute": ["/opt/toolchains/bin"],
+      "write": []
+    }
+  }
+}
+```
+
+Additive only. What the daemon grants is the floor: the project and the state
+directory are still placed, the environment is still built rather than
+inherited, and the backend's own profile is still cleared first. Paths must be
+absolute, because after the pivot there is no working directory to resolve a
+relative one against.
+
+Anything granted here is named in the startup report, and a writable grant is
+called out separately, since that is the one that lets a session change
+something outside its own project. A report that did not say so would describe
+a tighter boundary than the one in force.
+
+There is deliberately no way to supply a whole policy file. That would let the
+report claim guarantees the file does not make; editing `src/sandbox/policy.ts`
+is the honest way to change the floor itself.
+
+## Telling a toolchain where to look
+
+A granted path is often not enough on its own, because the environment is built
+rather than inherited: a variable the daemon does not set does not exist inside
+a session. `sandbox.env` names the ones that should:
+
+```json
+{
+  "sandbox": {
+    "env": { "CARGO_HOME": "/var/cache/errand/cargo" },
+    "policyExtra": {
+      "read": ["/var/cache/errand/cargo"],
+      "write": ["/var/cache/errand/cargo"],
+      "execute": []
+    }
+  }
+}
+```
+
+That is the shape of a cache shared between sessions and kept off your own:
+sessions warm one directory that is nobody's real cache, rather than
+redownloading into a state directory that is thrown away with the session.
+Setting the variable and granting the path are two steps on purpose, since a
+variable does not widen the boundary and a grant does.
+
+A granted directory is still not on a session's PATH, so a program in it is
+found only by its full path. `sandbox.pathExtra` puts it there:
+
+```json
+{
+  "sandbox": {
+    "pathExtra": ["/opt/toolchains/bin"],
+    "policyExtra": {
+      "read": ["/opt/toolchains"],
+      "execute": ["/opt/toolchains/bin"],
+      "write": []
+    }
+  }
+}
+```
+
+Those directories sit after the agent's own wrappers and ahead of `/usr/bin`,
+so a toolchain named on purpose is the one a session finds rather than the
+host's copy. Naming one grants nothing: a directory that is not also granted is
+a name on a path leading nowhere.
+
+`PATH` and `HOME` are refused, because the policy sets both to paths it places,
+and so is the name carrying the provider credential. A name the daemon sets
+itself keeps the daemon's value, so nothing here can decide what the agent
+authenticates as. The names given are reported at startup; the values are not,
+and a value reaches the agent, so nothing secret belongs here.
+
+## What is not confined
+
+- **The daemon itself.** It holds the chat token and starts sandboxes.
+- **The web interface.** Anyone who can reach it acts with operator authority,
+  which is why the address it binds to is checked and a public bind refused.
+- **Disk use**, which is measured rather than enforced: no backend caps what a
+  process tree writes in aggregate without a sized filesystem under it. A
+  session that passes its budget is stopped, and the check paces itself against
+  how fast the session is writing.
+
+## What the agent holds
+
+The provider credential, because it needs it, and a GitHub token when one is
+configured, because reading issues and checking builds is most of working on
+somebody's repository.
+
+It does not hold the chat token, and everything a session reports is scrubbed of
+every configured secret before it reaches a channel, a browser, or the
+transcript on disk. That is damage control on an unavoidable exposure rather
+than a boundary: an agent that re-encodes a key defeats it.

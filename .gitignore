@@ -1,0 +1,15 @@
+# Runtime configuration holds the bot token and the provider credential.
+config.json
+config.local.json
+
+# Per-session state written by the daemon and mounted into sandboxes.
+state/
+
+# Built output.
+dist/
+
+# npm packages the interface build pulls in.
+node_modules/
+
+# What the documentation build leaves behind.
+docs/.vitepress/cache/
