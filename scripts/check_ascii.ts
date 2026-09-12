@@ -18,14 +18,18 @@ interface Offence {
 
 /** Lists tracked files with jj, falling back to git where jj is absent. */
 async function tracked(): Promise<string[]> {
-  const jj = await new Deno.Command("jj", {
-    args: ["file", "list"],
-    stdout: "piped",
-    stderr: "null",
-  }).output();
   const decoder = new TextDecoder();
-  if (jj.code === 0) {
-    return decoder.decode(jj.stdout).split("\n").map((l) => l.trim()).filter(Boolean);
+  try {
+    const jj = await new Deno.Command("jj", {
+      args: ["file", "list"],
+      stdout: "piped",
+      stderr: "null",
+    }).output();
+    if (jj.code === 0) {
+      return decoder.decode(jj.stdout).split("\n").map((l) => l.trim()).filter(Boolean);
+    }
+  } catch {
+    // No jj on this machine; git is the fallback.
   }
   const git = await new Deno.Command("git", {
     args: ["ls-files"],
