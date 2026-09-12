@@ -32,7 +32,9 @@ Deno.test("it looks in the account's config directory, then the system's", () =>
   // produce the Windows spellings, which have their own tests above.
   assertEquals(configCandidates({ HOME: "/home/amelia" }, false), [
     join("/home/amelia", ".config", "errand", "config.json"),
-    join("/etc", "errand", "config.json"),
+    // The system path is a template, not a join, so it spells the same on
+    // every host that runs the POSIX branch.
+    "/etc/errand/config.json",
     "config.json",
   ]);
 });
